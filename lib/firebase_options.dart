@@ -19,12 +19,14 @@ class DefaultFirebaseOptions {
   }
 
   // ⚠️  Replace this with values from your google-services.json
-  // Run `flutterfire configure` to auto-generate this correctly.
+
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'YOUR_API_KEY',
-    appId: 'YOUR_APP_ID',
-    messagingSenderId: 'YOUR_SENDER_ID',
-    projectId: 'YOUR_PROJECT_ID',
-    storageBucket: 'YOUR_BUCKET',
+    apiKey: 'AIzaSyCucN-eWRh5vvOvtF6FTkNsM7DB76F9Tv4',
+    appId: '1:286375808948:android:4fc732fa649515b16f6ce1',
+    messagingSenderId: '286375808948',
+    projectId: 'mindbreak-66378',
+    storageBucket: 'mindbreak-66378.firebasestorage.app',
   );
+
+  // Run `flutterfire configure` to auto-generate this correctly.
 }
