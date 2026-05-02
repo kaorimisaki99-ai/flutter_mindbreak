@@ -1,0 +1,60 @@
+name: Flutter Android Build
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Setup Java (required for Android)
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # 3. Setup Flutter
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+          cache: true
+
+      # 4. Verify Flutter install
+      - name: Flutter Doctor
+        run: flutter doctor -v
+
+      # 5. Install dependencies
+      - name: Get packages
+        run: flutter pub get
+
+      # 6. Accept Android licenses (prevents CI errors)
+      - name: Accept Android licenses
+        run: yes | sdkmanager --licenses
+
+      # 7. Run tests (optional)
+      - name: Run tests
+        run: flutter test
+
+      # 8. Build APK
+      - name: Build Release APK
+        run: flutter build apk --release
+
+      # 9. Upload APK artifact
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
