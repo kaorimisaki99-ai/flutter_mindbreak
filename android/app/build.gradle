@@ -1,16 +1,13 @@
+def flutterRoot = localProperties.getProperty('flutter.sdk')
+
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
+apply plugin: 'com.google.gms.google-services'
 apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
-
-plugins {
-    id "com.android.application"
-    id "kotlin-android"
-    id "com.google.gms.google-services"
-}
 
 android {
     namespace "com.mindbreak.app"
-    compileSdkVersion 34          // compile with latest SDK
+    compileSdkVersion 34
     ndkVersion flutter.ndkVersion
 
     compileOptions {
@@ -28,8 +25,8 @@ android {
 
     defaultConfig {
         applicationId "com.mindbreak.app"
-        minSdkVersion 21          // Android 5.0+
-        targetSdkVersion 30       // Android 11 — as requested
+        minSdkVersion 21
+        targetSdkVersion 30
         versionCode flutter.versionCode
         versionName flutter.versionName
     }
@@ -37,9 +34,8 @@ android {
     buildTypes {
         release {
             signingConfig signingConfigs.debug
-            minifyEnabled true
-            shrinkResources true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            minifyEnabled false   // safer for now (can enable later)
+            shrinkResources false
         }
     }
 }
