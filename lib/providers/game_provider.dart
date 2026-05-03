@@ -65,12 +65,10 @@ class GameProvider extends ChangeNotifier {
 
   void _generateWeeklyHistory() {
     final today = DateTime.now();
-    final seed = [18, 35, 12, 40, 27, 22, 0];
     _weeklyUsage = List.generate(7, (i) {
       final d = today.subtract(Duration(days: 6 - i));
       final dateStr = '${d.year}-${d.month}-${d.day}';
-      final mins = i == 6 ? 0 : seed[i];
-      return DayUsage(date: dateStr, minutes: mins, locked: mins >= 30);
+      return DayUsage(date: dateStr, minutes: 0, locked: false);
     });
   }
 
@@ -152,5 +150,6 @@ class GameProvider extends ChangeNotifier {
       _weeklyUsage = [..._weeklyUsage.sublist(1), DayUsage(date: todayStr, minutes: minutes)];
     }
     notifyListeners();
+    _persist(); // persist real usage so it survives restarts
   }
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -7,8 +8,44 @@ import '../providers/game_provider.dart';
 import '../providers/shield_provider.dart';
 import '../widgets/weekly_bar_chart.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+  Timer? _pollTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Poll every 60 seconds while the app is open
+    _pollTimer = Timer.periodic(const Duration(seconds: 60), (_) => _refresh());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+
+  // Refresh usage whenever user comes back from another app
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refresh();
+  }
+
+  Future<void> _refresh() async {
+    final shield = context.read<ShieldProvider>();
+    final game = context.read<GameProvider>();
+    await shield.refresh();
+    final top = shield.topAppSorted;
+    if (top != null) game.updateTodayUsage(top.usedMinutesToday);
+  }
 
   @override
   Widget build(BuildContext context) {
