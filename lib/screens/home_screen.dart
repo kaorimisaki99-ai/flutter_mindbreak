@@ -33,7 +33,7 @@ class HomeScreen extends StatelessWidget {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 32, 20, 20),
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
           children: [
             // Header
             Text('MindBreak',
@@ -42,7 +42,7 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(height: 2),
             Text(today,
                 style: GoogleFonts.inter(fontSize: 14, color: AppColors.textMuted)),
-            const SizedBox(height: 18),
+            const SizedBox(height: 12),
 
             // Debug status (remove after testing)
             Container(
@@ -63,7 +63,7 @@ class HomeScreen extends StatelessWidget {
               weeklyUsage: game.weeklyUsage,
               dailyLimitMinutes: limit,
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
 
             // Top App Widget
             if (topApp != null)
@@ -84,7 +84,7 @@ class HomeScreen extends StatelessWidget {
                 },
                 onViewLock: () => shield.triggerLock(topApp.name),
               ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
 
             // All apps ranked list
             Text('ALL APPS TODAY',
@@ -96,7 +96,7 @@ class HomeScreen extends StatelessWidget {
               final app = entry.value;
               final pct = (app.usedMinutesToday / limit).clamp(0.0, 1.0);
               return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.only(bottom: 4),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(
@@ -149,10 +149,10 @@ class HomeScreen extends StatelessWidget {
               );
             }),
 
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
             // Simulate section
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 border: Border.all(color: AppColors.border),
                 borderRadius: BorderRadius.circular(14),
@@ -192,7 +192,7 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 80),
+            const SizedBox(height: 8),
           ],
         ),
       ),

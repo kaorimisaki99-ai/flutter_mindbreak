@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.content.pm.ResolveInfo
 import android.os.Build
 import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
@@ -16,23 +17,16 @@ class MainActivity : FlutterActivity() {
     companion object {
         private const val USAGE_CHANNEL = "com.mindbreak.app/usage_stats"
 
-        // Packages to always exclude regardless of system flag
         private val ALWAYS_EXCLUDED = setOf(
             "com.mindbreak.app",
             "com.android.systemui",
-            "com.android.launcher",
-            "com.android.launcher3",
-            "com.google.android.apps.nexuslauncher",
-            "com.sec.android.app.launcher",
-            "com.miui.home",
-            "com.huawei.android.launcher",
-            "com.oppo.launcher",
             "com.android.inputmethod.latin",
             "com.samsung.android.inputmethod",
             "com.google.android.inputmethod.latin",
             "android",
-            "com.android.phone",
             "com.android.server.telecom",
+            "com.android.shell",
+            "com.android.providers.downloads.ui",
         )
     }
 
@@ -66,7 +60,7 @@ class MainActivity : FlutterActivity() {
                     }
 
                     "getInstalledApps" -> {
-                        result.success(getAllNonSystemApps())
+                        result.success(getAllAppsWithLauncher())
                     }
 
                     else -> result.notImplemented()
@@ -93,41 +87,58 @@ class MainActivity : FlutterActivity() {
         return mode == AppOpsManager.MODE_ALLOWED
     }
 
-    private fun getAllNonSystemApps(): List<Map<String, String>> {
+    private fun getAllAppsWithLauncher(): List<Map<String, String>> {
         val pm = packageManager
 
-        // Use getLaunchIntentForPackage to find ALL apps that have a launcher icon
-        // This catches both user-installed and pre-installed apps that appear in app drawer
-        val packages = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            pm.getInstalledApplications(
-                PackageManager.ApplicationInfoFlags.of(0L)
-            )
-        } else {
-            @Suppress("DEPRECATION")
-            pm.getInstalledApplications(0)
+        // Query ALL activities that respond to MAIN + LAUNCHER
+        // This is the most reliable way to get exactly what shows in the app drawer
+        val intent = Intent(Intent.ACTION_MAIN).apply {
+            addCategory(Intent.CATEGORY_LAUNCHER)
         }
 
-        return packages
-            .filter { appInfo ->
-                val pkg = appInfo.packageName
+        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            PackageManager.MATCH_ALL
+        } else {
+            0
+        }
 
-                // Skip always-excluded packages
-                if (pkg in ALWAYS_EXCLUDED) return@filter false
-
-                // Skip packages with no launcher intent (background services, etc.)
-                if (pm.getLaunchIntentForPackage(pkg) == null) return@filter false
-
-                true
+        val resolveInfoList: List<ResolveInfo> = try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                pm.queryIntentActivities(
+                    intent,
+                    PackageManager.ResolveInfoFlags.of(flags.toLong())
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                pm.queryIntentActivities(intent, flags)
             }
-            .mapNotNull { appInfo ->
-                try {
-                    val name = pm.getApplicationLabel(appInfo).toString()
-                    if (name.isBlank()) return@mapNotNull null
-                    mapOf("packageId" to appInfo.packageName, "name" to name)
-                } catch (_: Exception) {
-                    null
-                }
+        } catch (e: Exception) {
+            emptyList()
+        }
+
+        // Use LinkedHashMap to deduplicate by packageId while keeping best name
+        val appMap = LinkedHashMap<String, String>()
+
+        for (resolveInfo in resolveInfoList) {
+            val pkg = resolveInfo.activityInfo?.packageName ?: continue
+            if (pkg in ALWAYS_EXCLUDED) continue
+
+            val name = try {
+                resolveInfo.loadLabel(pm).toString().trim()
+            } catch (e: Exception) {
+                continue
             }
+
+            if (name.isBlank()) continue
+
+            // Keep first occurrence (usually the best label)
+            if (!appMap.containsKey(pkg)) {
+                appMap[pkg] = name
+            }
+        }
+
+        return appMap.entries
+            .map { mapOf("packageId" to it.key, "name" to it.value) }
             .sortedBy { it["name"] }
     }
 }
