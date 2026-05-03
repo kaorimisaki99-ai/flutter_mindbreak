@@ -1,52 +1,44 @@
-name: Flutter Android Build
+name: Build APK
 
 on:
   push:
-    branches:
-      - main
-      - master
+    branches: [ main, master ]
   pull_request:
+    branches: [ main, master ]
 
 jobs:
   build:
-    name: Build APK
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      # 2. Java
-      - name: Set up JDK 17
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: '17'
 
-      # 3. Flutter
-      - name: Install Flutter
+      - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
-          channel: 'stable'
+          flutter-version: '3.27.4'   # ← matches your local VS Code version
+          channel: stable
           cache: true
 
-      # 4. Check setup
-      - name: Flutter doctor
-        run: flutter doctor -v
-
-      # 5. Dependencies
-      - name: Get packages
+      - name: Get dependencies
         run: flutter pub get
 
-      # 6. Build APK
-      - name: Build APK
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+
+      - name: Build release APK
         run: flutter build apk --release
 
-      # 7. Upload APK
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-release
+          name: mindbreak-release
           path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30
