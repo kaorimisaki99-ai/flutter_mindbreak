@@ -15,6 +15,25 @@ class MainActivity : FlutterActivity() {
 
     companion object {
         private const val USAGE_CHANNEL = "com.mindbreak.app/usage_stats"
+
+        // Packages to always exclude regardless of system flag
+        private val ALWAYS_EXCLUDED = setOf(
+            "com.mindbreak.app",
+            "com.android.systemui",
+            "com.android.launcher",
+            "com.android.launcher3",
+            "com.google.android.apps.nexuslauncher",
+            "com.sec.android.app.launcher",
+            "com.miui.home",
+            "com.huawei.android.launcher",
+            "com.oppo.launcher",
+            "com.android.inputmethod.latin",
+            "com.samsung.android.inputmethod",
+            "com.google.android.inputmethod.latin",
+            "android",
+            "com.android.phone",
+            "com.android.server.telecom",
+        )
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -23,10 +42,7 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, USAGE_CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
-
-                    "hasUsagePermission" -> {
-                        result.success(hasUsageStatsPermission())
-                    }
+                    "hasUsagePermission" -> result.success(hasUsageStatsPermission())
 
                     "requestUsagePermission" -> {
                         startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
@@ -38,13 +54,11 @@ class MainActivity : FlutterActivity() {
                             result.error("PERMISSION_DENIED", "Usage access not granted", null)
                             return@setMethodCallHandler
                         }
-                        val stats = UsageStatsHelper.getTopAppUsageToday(applicationContext)
-                        result.success(stats)
+                        result.success(UsageStatsHelper.getTopAppUsageToday(applicationContext))
                     }
 
-                    "hasAccessibilityPermission" -> {
+                    "hasAccessibilityPermission" ->
                         result.success(AppBlockerService.isEnabled(applicationContext))
-                    }
 
                     "requestAccessibilityPermission" -> {
                         startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
@@ -52,9 +66,7 @@ class MainActivity : FlutterActivity() {
                     }
 
                     "getInstalledApps" -> {
-                        // Returns ALL non-system apps — no special permission needed
-                        val apps = getAllNonSystemApps()
-                        result.success(apps)
+                        result.success(getAllNonSystemApps())
                     }
 
                     else -> result.notImplemented()
@@ -84,34 +96,38 @@ class MainActivity : FlutterActivity() {
     private fun getAllNonSystemApps(): List<Map<String, String>> {
         val pm = packageManager
 
-        // Get all installed packages
+        // Use getLaunchIntentForPackage to find ALL apps that have a launcher icon
+        // This catches both user-installed and pre-installed apps that appear in app drawer
         val packages = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            pm.getInstalledApplications(PackageManager.ApplicationInfoFlags.of(PackageManager.GET_META_DATA.toLong()))
+            pm.getInstalledApplications(
+                PackageManager.ApplicationInfoFlags.of(0L)
+            )
         } else {
             @Suppress("DEPRECATION")
-            pm.getInstalledApplications(PackageManager.GET_META_DATA)
+            pm.getInstalledApplications(0)
         }
 
         return packages
             .filter { appInfo ->
-                // Keep only user-installed apps (exclude pure system apps)
-                val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
-                val isUpdatedSystem = (appInfo.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
-                // Include if: not system app OR is an updated system app (like Chrome, Maps)
-                (!isSystem || isUpdatedSystem) && appInfo.packageName != packageName
+                val pkg = appInfo.packageName
+
+                // Skip always-excluded packages
+                if (pkg in ALWAYS_EXCLUDED) return@filter false
+
+                // Skip packages with no launcher intent (background services, etc.)
+                if (pm.getLaunchIntentForPackage(pkg) == null) return@filter false
+
+                true
             }
             .mapNotNull { appInfo ->
                 try {
-                    val appName = pm.getApplicationLabel(appInfo).toString()
-                    mapOf(
-                        "packageId" to appInfo.packageName,
-                        "name" to appName,
-                    )
-                } catch (e: Exception) {
+                    val name = pm.getApplicationLabel(appInfo).toString()
+                    if (name.isBlank()) return@mapNotNull null
+                    mapOf("packageId" to appInfo.packageName, "name" to name)
+                } catch (_: Exception) {
                     null
                 }
             }
-            .filter { it["name"]!!.isNotBlank() }
             .sortedBy { it["name"] }
     }
 }

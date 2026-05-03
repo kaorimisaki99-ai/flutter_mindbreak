@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../providers/shield_provider.dart';
-import 'dart:async';
 import 'package:flutter/services.dart';
 
 class PermissionScreen extends StatefulWidget {
@@ -14,7 +13,8 @@ class PermissionScreen extends StatefulWidget {
   State<PermissionScreen> createState() => _PermissionScreenState();
 }
 
-class _PermissionScreenState extends State<PermissionScreen> with WidgetsBindingObserver {
+class _PermissionScreenState extends State<PermissionScreen>
+    with WidgetsBindingObserver {
   static const _channel = MethodChannel('com.mindbreak.app/usage_stats');
 
   bool _hasUsage = false;
@@ -34,7 +34,6 @@ class _PermissionScreenState extends State<PermissionScreen> with WidgetsBinding
     super.dispose();
   }
 
-  // Re-check when user comes back from Settings
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
@@ -45,22 +44,23 @@ class _PermissionScreenState extends State<PermissionScreen> with WidgetsBinding
   Future<void> _checkPermissions() async {
     setState(() => _loading = true);
     try {
-      final usage = await _channel.invokeMethod<bool>('hasUsagePermission') ?? false;
-      final accessibility = await _channel.invokeMethod<bool>('hasAccessibilityPermission') ?? false;
+      final usage =
+          await _channel.invokeMethod<bool>('hasUsagePermission') ?? false;
+      final accessibility =
+          await _channel.invokeMethod<bool>('hasAccessibilityPermission') ??
+              false;
+      if (!mounted) return;
       setState(() {
         _hasUsage = usage;
         _hasAccessibility = accessibility;
         _loading = false;
       });
       if (usage && accessibility) {
-        // Refresh apps now that permission is granted
-        if (mounted) {
-          await context.read<ShieldProvider>().refresh();
-          widget.onAllGranted();
-        }
+        await context.read<ShieldProvider>().refresh();
+        if (mounted) widget.onAllGranted();
       }
     } catch (e) {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -77,31 +77,33 @@ class _PermissionScreenState extends State<PermissionScreen> with WidgetsBinding
     if (_loading) {
       return const Scaffold(
         backgroundColor: AppColors.background,
-        body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        body: Center(
+            child: CircularProgressIndicator(color: AppColors.primary)),
       );
     }
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 40, 24, 32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 32),
-
+              // Icon
               Container(
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.15),
+                  color: AppColors.primary.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Icon(Icons.shield_outlined, color: AppColors.primary, size: 36),
+                child: const Icon(Icons.shield_outlined,
+                    color: AppColors.primary, size: 36),
               ),
               const SizedBox(height: 24),
 
+              // Title
               Text(
                 'Setup MindBreak',
                 style: GoogleFonts.inter(
@@ -113,59 +115,74 @@ class _PermissionScreenState extends State<PermissionScreen> with WidgetsBinding
               const SizedBox(height: 8),
               Text(
                 'Grant the following permissions to enable app tracking and blocking.',
-                style: GoogleFonts.inter(fontSize: 15, color: AppColors.textMuted, height: 1.5),
+                style: GoogleFonts.inter(
+                    fontSize: 15, color: AppColors.textMuted, height: 1.5),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 32),
 
+              // Permission 1
               _PermissionTile(
                 icon: Icons.bar_chart_outlined,
                 title: 'Usage Access',
-                description: 'Lets MindBreak see how long you use each app per day.',
+                description:
+                    'Lets MindBreak see how long you use each app per day.',
                 isGranted: _hasUsage,
                 onTap: _hasUsage ? null : _requestUsage,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
 
+              // Permission 2
               _PermissionTile(
                 icon: Icons.accessibility_new_outlined,
                 title: 'Accessibility Service',
-                description: 'Allows MindBreak to detect and block apps when your limit is reached.',
+                description:
+                    'Allows MindBreak to detect and block apps when your limit is reached.',
                 isGranted: _hasAccessibility,
                 onTap: _hasAccessibility ? null : _requestAccessibility,
               ),
 
-              const Spacer(),
+              const SizedBox(height: 32),
 
+              // Check Again button
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: _checkPermissions,
-                  icon: const Icon(Icons.refresh, size: 18, color: AppColors.textMuted),
+                  icon: const Icon(Icons.refresh,
+                      size: 18, color: AppColors.textMuted),
                   label: Text(
                     'Check Again',
-                    style: GoogleFonts.inter(fontSize: 14, color: AppColors.textMuted),
+                    style: GoogleFonts.inter(
+                        fontSize: 14, color: AppColors.textMuted),
                   ),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     side: const BorderSide(color: AppColors.border),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
                   ),
                 ),
               ),
               const SizedBox(height: 12),
 
+              // Continue button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: (_hasUsage && _hasAccessibility) ? widget.onAllGranted : null,
+                  onPressed: (_hasUsage && _hasAccessibility)
+                      ? widget.onAllGranted
+                      : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     disabledBackgroundColor: AppColors.muted,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
                   ),
                   child: Text(
-                    (_hasUsage && _hasAccessibility) ? 'Continue →' : 'Grant Permissions Above',
+                    (_hasUsage && _hasAccessibility)
+                        ? 'Continue →'
+                        : 'Grant Permissions Above',
                     style: GoogleFonts.inter(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -181,7 +198,8 @@ class _PermissionScreenState extends State<PermissionScreen> with WidgetsBinding
               Center(
                 child: Text(
                   'Your data stays on your device. Nothing is shared.',
-                  style: GoogleFonts.inter(fontSize: 11, color: AppColors.textMuted),
+                  style: GoogleFonts.inter(
+                      fontSize: 11, color: AppColors.textMuted),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -216,7 +234,9 @@ class _PermissionTile extends StatelessWidget {
         color: AppColors.card,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isGranted ? AppColors.success.withOpacity(0.4) : AppColors.border,
+          color: isGranted
+              ? AppColors.success.withValues(alpha: 0.4)
+              : AppColors.border,
           width: 1.5,
         ),
       ),
@@ -226,7 +246,9 @@ class _PermissionTile extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: isGranted ? AppColors.success.withOpacity(0.15) : AppColors.cardElevated,
+              color: isGranted
+                  ? AppColors.success.withValues(alpha: 0.15)
+                  : AppColors.cardElevated,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -242,39 +264,50 @@ class _PermissionTile extends StatelessWidget {
               children: [
                 Text(title,
                     style: GoogleFonts.inter(
-                        fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary)),
                 const SizedBox(height: 3),
                 Text(description,
                     style: GoogleFonts.inter(
-                        fontSize: 12, color: AppColors.textMuted, height: 1.4)),
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                        height: 1.4)),
               ],
             ),
           ),
           const SizedBox(width: 12),
           if (isGranted)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: AppColors.success.withOpacity(0.15),
+                color: AppColors.success.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text('Granted',
                   style: GoogleFonts.inter(
-                      fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.success)),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.success)),
             )
           else
             GestureDetector(
               onTap: onTap,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 7),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.15),
+                  color: AppColors.primary.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                  border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.3)),
                 ),
                 child: Text('Enable',
                     style: GoogleFonts.inter(
-                        fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary)),
               ),
             ),
         ],

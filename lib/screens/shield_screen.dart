@@ -1,175 +1,182 @@
-import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
-import '../theme/app_theme.dart';
-import '../providers/game_provider.dart';
-import '../providers/shield_provider.dart';
+import 'package:flutter/services.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../models/tracked_app.dart';
+import '../models/app_settings.dart';
 
-class ShieldScreen extends StatefulWidget {
-  const ShieldScreen({super.key});
+const _usageChannel = MethodChannel('com.mindbreak.app/usage_stats');
 
-  @override
-  State<ShieldScreen> createState() => _ShieldScreenState();
-}
+class ShieldProvider extends ChangeNotifier {
+  AppSettings _settings = AppSettings();
+  List<TrackedApp> _trackedApps = [];
+  bool _isLocked = false;
+  String? _shieldTarget;
+  bool _loadingApps = true;
+  String _debugStatus = 'initializing...';
 
-class _ShieldScreenState extends State<ShieldScreen> with SingleTickerProviderStateMixin {
-  late AnimationController _pulseController;
-  late Animation<double> _pulseAnim;
-  late Timer _clockTimer;
-  Duration _msLeft = _timeUntilMidnight();
+  AppSettings get settings => _settings;
+  List<TrackedApp> get trackedApps => _trackedApps;
+  bool get isLocked => _isLocked;
+  String? get shieldTarget => _shieldTarget;
+  bool get loadingApps => _loadingApps;
+  String get debugStatus => _debugStatus;
 
-  static Duration _timeUntilMidnight() {
-    final now = DateTime.now();
-    final midnight = DateTime(now.year, now.month, now.day + 1);
-    return midnight.difference(now);
+  List<TrackedApp> get sortedApps =>
+      [..._trackedApps]..sort((a, b) => b.usedMinutesToday.compareTo(a.usedMinutesToday));
+
+  // Only non-excluded apps for tracking/display
+  List<TrackedApp> get trackedSortedApps => sortedApps
+      .where((a) => !_settings.isExcluded(a.packageId))
+      .toList();
+
+  TrackedApp? get topAppSorted =>
+      trackedSortedApps.isNotEmpty ? trackedSortedApps.first : null;
+
+  String? get _uid => FirebaseAuth.instance.currentUser?.uid;
+  DocumentReference? get _doc => _uid == null
+      ? null
+      : FirebaseFirestore.instance.collection('users').doc(_uid);
+
+  Future<void> init() async {
+    // Load settings first (fast - local only)
+    final prefs = await SharedPreferences.getInstance();
+    final settingsRaw = prefs.getString('app_settings');
+    if (settingsRaw != null) {
+      try {
+        _settings = AppSettings.fromMap(jsonDecode(settingsRaw) as Map<String, dynamic>);
+      } catch (_) {}
+    }
+
+    // Fetch installed apps immediately (no Firestore wait)
+    await _fetchInstalledApps();
+
+    // Show UI right away
+    _loadingApps = false;
+    notifyListeners();
+
+    // Fetch usage stats in background
+    _fetchRealUsage().then((_) => notifyListeners());
+
+    // Sync Firestore settings in background (non-blocking)
+    _syncFirestore();
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat(reverse: true);
-
-    _pulseAnim = Tween<double>(begin: 1.0, end: 1.08).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
-
-    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      setState(() => _msLeft = _timeUntilMidnight());
-    });
+  Future<void> _syncFirestore() async {
+    try {
+      final snap = await _doc?.get();
+      if (snap != null && snap.exists) {
+        final data = snap.data() as Map<String, dynamic>?;
+        if (data?['settings'] != null) {
+          _settings = AppSettings.fromMap(data!['settings'] as Map<String, dynamic>);
+          notifyListeners();
+        }
+      }
+    } catch (_) {}
   }
 
-  @override
-  void dispose() {
-    _pulseController.dispose();
-    _clockTimer.cancel();
-    super.dispose();
+  Future<void> _fetchInstalledApps() async {
+    try {
+      _debugStatus = 'fetching installed apps...';
+      final result = await _usageChannel.invokeMethod<List>('getInstalledApps');
+
+      if (result != null && result.isNotEmpty) {
+        _debugStatus = 'got ${result.length} apps from device';
+        _trackedApps = result.map((e) {
+          final app = Map<String, String>.from(e as Map);
+          return TrackedApp.fromInstalledApp(app);
+        }).toList();
+        return;
+      } else {
+        _debugStatus = 'result empty, using defaults';
+      }
+    } on PlatformException catch (e) {
+      _debugStatus = 'PlatformException: ${e.code}';
+    } catch (e) {
+      _debugStatus = 'Error: $e';
+    }
+
+    _trackedApps = TrackedApp.defaults;
+    _debugStatus = 'using hardcoded defaults';
   }
 
-  String _formatCountdown(Duration d) {
-    final h = d.inHours.toString().padLeft(2, '0');
-    final m = (d.inMinutes % 60).toString().padLeft(2, '0');
-    final s = (d.inSeconds % 60).toString().padLeft(2, '0');
-    return '$h:$m:$s';
+  Future<void> _fetchRealUsage() async {
+    try {
+      final result = await _usageChannel.invokeMethod<Map>('getUsageStats');
+      if (result != null) {
+        _trackedApps = _trackedApps.map((app) {
+          final mins = result[app.packageId];
+          if (mins != null) {
+            return app.copyWith(usedMinutesToday: (mins as int));
+          }
+          return app;
+        }).toList();
+      }
+    } on PlatformException {
+      // permission not granted
+    } catch (_) {}
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final shield = context.watch<ShieldProvider>();
-    final game = context.watch<GameProvider>();
-    final state = game.state;
+  Future<void> _persist() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('app_settings', jsonEncode(_settings.toMap()));
+    try {
+      await _doc?.set({
+        'settings': _settings.toMap(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (_) {}
+  }
 
-    final streakColor = state.streak >= 7
-        ? AppColors.success
-        : state.streak >= 3
-            ? AppColors.warning
-            : AppColors.textMuted;
+  Future<void> updateSettings(AppSettings updated) async {
+    _settings = updated;
+    notifyListeners();
+    await _persist();
+  }
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 28),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ScaleTransition(
-                  scale: _pulseAnim,
-                  child: Container(
-                    width: 110, height: 110,
-                    decoration: BoxDecoration(
-                      color: AppColors.danger.withOpacity(0.12),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.lock, size: 52, color: AppColors.danger),
-                  ),
-                ),
-                const SizedBox(height: 24),
+  Future<void> toggleExclusion(String packageId) async {
+    _settings = _settings.withToggleExclusion(packageId);
+    notifyListeners();
+    await _persist();
+  }
 
-                Text('Locked.',
-                    style: GoogleFonts.inter(fontSize: 48, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                const SizedBox(height: 4),
-                Text(shield.shieldTarget ?? 'This App',
-                    style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.danger)),
-                const SizedBox(height: 16),
+  void triggerLock(String appName) {
+    _isLocked = true;
+    _shieldTarget = appName;
+    notifyListeners();
+  }
 
-                Text(
-                  'You hit your daily limit.\nNo quest. No bypass. No exceptions.\nSee you tomorrow.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(fontSize: 15, color: AppColors.textMuted, height: 1.5),
-                ),
-                const SizedBox(height: 24),
+  void dismissShield() {
+    _isLocked = false;
+    _shieldTarget = null;
+    notifyListeners();
+  }
 
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Column(
-                    children: [
-                      Text('UNLOCKS IN',
-                          style: GoogleFonts.inter(fontSize: 11, letterSpacing: 2, color: AppColors.textMuted, fontWeight: FontWeight.w500)),
-                      const SizedBox(height: 4),
-                      Text(_formatCountdown(_msLeft),
-                          style: GoogleFonts.inter(fontSize: 48, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                      Text('Resets at midnight',
-                          style: GoogleFonts.inter(fontSize: 13, color: AppColors.textMuted)),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
+  void simulateUsage(String id, int minutes) {
+    _trackedApps = _trackedApps.map((a) {
+      if (a.id == id) return a.copyWith(usedMinutesToday: a.usedMinutesToday + minutes);
+      return a;
+    }).toList();
+    notifyListeners();
+    _persist();
+  }
 
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.trending_up, size: 16, color: streakColor),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          state.lockedToday
-                              ? 'Streak reset to 0. Don\'t let it happen again.'
-                              : '${state.streak} day streak — protect it tomorrow',
-                          style: GoogleFonts.inter(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: state.lockedToday ? AppColors.danger : streakColor),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
+  void resetDailyUsage() {
+    _trackedApps = _trackedApps.map((a) => a.copyWith(usedMinutesToday: 0)).toList();
+    _isLocked = false;
+    _shieldTarget = null;
+    notifyListeners();
+    _persist();
+  }
 
-                Text('NO MERCY',
-                    style: GoogleFonts.inter(fontSize: 12, letterSpacing: 5, color: AppColors.border, fontWeight: FontWeight.w700)),
-
-                if (!shield.settings.strictMode) ...[
-                  const SizedBox(height: 16),
-                  GestureDetector(
-                    onTap: shield.dismissShield,
-                    child: Text('dismiss (demo only)',
-                        style: GoogleFonts.inter(fontSize: 11, color: AppColors.border)),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+  Future<void> refresh() async {
+    _loadingApps = true;
+    notifyListeners();
+    await _fetchInstalledApps();
+    await _fetchRealUsage();
+    _loadingApps = false;
+    notifyListeners();
   }
 }
