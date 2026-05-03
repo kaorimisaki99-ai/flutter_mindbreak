@@ -44,6 +44,20 @@ class HomeScreen extends StatelessWidget {
                 style: GoogleFonts.inter(fontSize: 14, color: AppColors.textMuted)),
             const SizedBox(height: 18),
 
+            // Debug status (remove after testing)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.muted,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'Apps: ${shield.trackedApps.length} · ${shield.debugStatus}',
+                style: GoogleFonts.inter(fontSize: 10, color: AppColors.textMuted),
+              ),
+            ),
+            const SizedBox(height: 10),
+
             // Weekly Bar Chart
             WeeklyBarChart(
               weeklyUsage: game.weeklyUsage,

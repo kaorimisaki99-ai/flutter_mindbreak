@@ -15,12 +15,14 @@ class ShieldProvider extends ChangeNotifier {
   bool _isLocked = false;
   String? _shieldTarget;
   bool _loadingApps = true;
+  String _debugStatus = 'initializing...';
 
   AppSettings get settings => _settings;
   List<TrackedApp> get trackedApps => _trackedApps;
   bool get isLocked => _isLocked;
   String? get shieldTarget => _shieldTarget;
   bool get loadingApps => _loadingApps;
+  String get debugStatus => _debugStatus;
 
   List<TrackedApp> get sortedApps =>
       [..._trackedApps]..sort((a, b) => b.usedMinutesToday.compareTo(a.usedMinutesToday));
@@ -35,7 +37,9 @@ class ShieldProvider extends ChangeNotifier {
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // Load settings
+    // Clear old cached data so fresh install always reads real apps
+    await prefs.remove('tracked_apps');
+
     final settingsRaw = prefs.getString('app_settings');
     if (settingsRaw != null) {
       try {
@@ -43,7 +47,6 @@ class ShieldProvider extends ChangeNotifier {
       } catch (_) {}
     }
 
-    // Try Firestore settings
     try {
       final snap = await _doc?.get();
       if (snap != null && snap.exists) {
@@ -54,59 +57,43 @@ class ShieldProvider extends ChangeNotifier {
       }
     } catch (_) {}
 
-    // Load installed apps from device
     await _fetchInstalledApps(prefs);
-
-    // Fetch real usage stats
     await _fetchRealUsage();
 
     _loadingApps = false;
     notifyListeners();
   }
 
-  /// Fetches all installed apps from the device via MethodChannel
   Future<void> _fetchInstalledApps(SharedPreferences prefs) async {
     try {
+      _debugStatus = 'calling getInstalledApps...';
       final result = await _usageChannel.invokeMethod<List>('getInstalledApps');
+      
       if (result != null && result.isNotEmpty) {
-        // Load previously saved usage data
-        final savedRaw = prefs.getString('tracked_apps');
-        Map<String, int> savedUsage = {};
-        if (savedRaw != null) {
-          try {
-            final list = jsonDecode(savedRaw) as List;
-            for (final e in list) {
-              final map = e as Map<String, dynamic>;
-              savedUsage[map['packageId'] as String] = (map['usedMinutesToday'] as int?) ?? 0;
-            }
-          } catch (_) {}
-        }
-
+        _debugStatus = 'got ${result.length} apps from device';
+        
         _trackedApps = result.map((e) {
           final app = Map<String, String>.from(e as Map);
-          final tracked = TrackedApp.fromInstalledApp(app);
-          return tracked.copyWith(usedMinutesToday: savedUsage[tracked.packageId] ?? 0);
+          return TrackedApp.fromInstalledApp(app);
         }).toList();
 
+        notifyListeners();
         return;
+      } else {
+        _debugStatus = 'result was null or empty, using defaults';
       }
-    } on PlatformException {
-      // Permission not granted yet — use defaults
-    } catch (_) {}
-
-    // Fallback to saved apps or defaults
-    final appsRaw = prefs.getString('tracked_apps');
-    if (appsRaw != null) {
-      try {
-        final list = jsonDecode(appsRaw) as List;
-        _trackedApps = list.map((e) => TrackedApp.fromMap(e as Map<String, dynamic>)).toList();
-        return;
-      } catch (_) {}
+    } on PlatformException catch (e) {
+      _debugStatus = 'PlatformException: ${e.code} - ${e.message}';
+    } catch (e) {
+      _debugStatus = 'Error: $e';
     }
+
+    // Fallback to defaults
     _trackedApps = TrackedApp.defaults;
+    _debugStatus = 'using hardcoded defaults';
+    notifyListeners();
   }
 
-  /// Calls native Kotlin to fetch real app usage via UsageStatsManager
   Future<void> _fetchRealUsage() async {
     try {
       final result = await _usageChannel.invokeMethod<Map>('getUsageStats');
@@ -120,7 +107,7 @@ class ShieldProvider extends ChangeNotifier {
         }).toList();
       }
     } on PlatformException {
-      // UsageStats permission not granted
+      // permission not granted
     } catch (_) {}
   }
 
@@ -174,11 +161,11 @@ class ShieldProvider extends ChangeNotifier {
     _persist();
   }
 
-  /// Refresh apps and usage — call after permission is granted
   Future<void> refresh() async {
     _loadingApps = true;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('tracked_apps');
     await _fetchInstalledApps(prefs);
     await _fetchRealUsage();
     _loadingApps = false;
