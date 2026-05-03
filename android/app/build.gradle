@@ -16,8 +16,9 @@ apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
 
 android {
     namespace "com.mindbreak.app"
-    compileSdkVersion 34
+    compileSdkVersion 33
     ndkVersion flutter.ndkVersion
+    ndkVersion "25.1.8937393" 
     
 
     compileOptions {
@@ -36,7 +37,7 @@ android {
     defaultConfig {
         applicationId "com.mindbreak.app"
         minSdkVersion 21
-        targetSdkVersion 34
+        targetSdkVersion 33
         multiDexEnabled true
         
         versionCode 1
