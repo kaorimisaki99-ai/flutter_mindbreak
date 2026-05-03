@@ -1,46 +1,58 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+// Sage green palette + white light mode
 class AppColors {
-  static const background = Color(0xFF0D0F1A);
-  static const card = Color(0xFF161929);
-  static const cardElevated = Color(0xFF1C2035);
-  static const primary = Color(0xFF00E5C3);
-  static const primaryFg = Color(0xFF0D0F1A);
-  static const secondary = Color(0xFF6C63FF);
-  static const warning = Color(0xFFFF8C42);
-  static const danger = Color(0xFFFF4D6D);
-  static const success = Color(0xFF00D68F);
-  static const textPrimary = Color(0xFFF0F4FF);
-  static const textMuted = Color(0xFF4A5480);
-  static const muted = Color(0xFF1C2035);
-  static const border = Color(0xFF1E2540);
+  // Backgrounds
+  static const background    = Color(0xFFF7F9F6);   // off-white
+  static const card          = Color(0xFFFFFFFF);   // pure white cards
+  static const cardElevated  = Color(0xFFEEF3EE);   // light sage tint
+
+  // Brand
+  static const primary       = Color(0xFF5B8C6A);   // sage green
+  static const primaryFg     = Color(0xFFFFFFFF);   // white text on primary
+  static const secondary     = Color(0xFF7C9E8A);   // lighter sage
+
+  // Semantic
+  static const warning       = Color(0xFFD4862A);   // amber
+  static const danger        = Color(0xFFD94F4F);   // soft red
+  static const success       = Color(0xFF4A8C6A);   // deep sage green
+
+  // Text
+  static const textPrimary   = Color(0xFF1A2E22);   // dark green-black
+  static const textMuted     = Color(0xFF7A9485);   // muted sage
+
+  // UI
+  static const muted         = Color(0xFFE8F0E9);   // very light sage
+  static const border        = Color(0xFFD4E2D8);   // light sage border
 }
 
 class AppRankColors {
-  static const wanderer = Color(0xFF4A5480);
-  static const seeker = Color(0xFF6C63FF);
-  static const apprentice = Color(0xFF00E5C3);
-  static const guardian = Color(0xFF00D68F);
-  static const sage = Color(0xFFFF8C42);
-  static const mindMaster = Color(0xFFFFD700);
+  static const wanderer   = Color(0xFF7A9485);
+  static const seeker     = Color(0xFF7C9E8A);
+  static const apprentice = Color(0xFF5B8C6A);
+  static const guardian   = Color(0xFF4A8C6A);
+  static const sage       = Color(0xFFD4862A);
+  static const mindMaster = Color(0xFFB8922A);
 }
 
 ThemeData buildAppTheme() {
   return ThemeData(
     useMaterial3: true,
-    brightness: Brightness.dark,
+    brightness: Brightness.light,
     scaffoldBackgroundColor: AppColors.background,
-    colorScheme: const ColorScheme.dark(
+    colorScheme: const ColorScheme.light(
+      background: AppColors.background,
       surface: AppColors.card,
       primary: AppColors.primary,
       secondary: AppColors.secondary,
       error: AppColors.danger,
       onPrimary: AppColors.primaryFg,
+      onBackground: AppColors.textPrimary,
       onSurface: AppColors.textPrimary,
     ),
     textTheme: GoogleFonts.interTextTheme(
-      ThemeData.dark().textTheme,
+      ThemeData.light().textTheme,
     ).apply(bodyColor: AppColors.textPrimary, displayColor: AppColors.textPrimary),
     appBarTheme: const AppBarTheme(
       backgroundColor: AppColors.background,
@@ -62,11 +74,11 @@ ThemeData buildAppTheme() {
     ),
     dividerColor: AppColors.border,
     switchTheme: SwitchThemeData(
-      thumbColor: WidgetStateProperty.resolveWith(
-        (s) => s.contains(WidgetState.selected) ? AppColors.primary : AppColors.textMuted,
+      thumbColor: MaterialStateProperty.resolveWith(
+        (s) => s.contains(MaterialState.selected) ? AppColors.primary : AppColors.textMuted,
       ),
-      trackColor: WidgetStateProperty.resolveWith(
-        (s) => s.contains(WidgetState.selected)
+      trackColor: MaterialStateProperty.resolveWith(
+        (s) => s.contains(MaterialState.selected)
             ? AppColors.primary.withOpacity(0.3)
             : AppColors.muted,
       ),

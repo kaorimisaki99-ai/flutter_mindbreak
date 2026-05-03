@@ -10,13 +10,13 @@ import 'screens/home_screen.dart';
 import 'screens/stats_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/shield_screen.dart';
+import 'screens/permission_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // Anonymous sign-in: one device = one Firebase account
   if (FirebaseAuth.instance.currentUser == null) {
     await FirebaseAuth.instance.signInAnonymously();
   }
@@ -41,8 +41,29 @@ class MindBreakApp extends StatelessWidget {
       title: 'MindBreak',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
-      home: const AppShell(),
+      home: const PermissionGate(),
     );
+  }
+}
+
+class PermissionGate extends StatefulWidget {
+  const PermissionGate({super.key});
+
+  @override
+  State<PermissionGate> createState() => _PermissionGateState();
+}
+
+class _PermissionGateState extends State<PermissionGate> {
+  bool _permissionsGranted = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_permissionsGranted) {
+      return PermissionScreen(
+        onAllGranted: () => setState(() => _permissionsGranted = true),
+      );
+    }
+    return const AppShell();
   }
 }
 
@@ -62,7 +83,6 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     final shield = context.watch<ShieldProvider>();
 
-    // Show shield screen as full-screen overlay when locked
     if (shield.isLocked) {
       return const ShieldScreen();
     }

@@ -69,7 +69,7 @@ class _ShieldScreenState extends State<ShieldScreen> with SingleTickerProviderSt
             : AppColors.textMuted;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF06080F),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Center(
           child: Padding(
@@ -77,7 +77,6 @@ class _ShieldScreenState extends State<ShieldScreen> with SingleTickerProviderSt
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Pulsing lock icon
                 ScaleTransition(
                   scale: _pulseAnim,
                   child: Container(
@@ -92,7 +91,7 @@ class _ShieldScreenState extends State<ShieldScreen> with SingleTickerProviderSt
                 const SizedBox(height: 24),
 
                 Text('Locked.',
-                    style: GoogleFonts.inter(fontSize: 48, fontWeight: FontWeight.w700, color: Colors.white)),
+                    style: GoogleFonts.inter(fontSize: 48, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                 const SizedBox(height: 4),
                 Text(shield.shieldTarget ?? 'This App',
                     style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.danger)),
@@ -105,13 +104,13 @@ class _ShieldScreenState extends State<ShieldScreen> with SingleTickerProviderSt
                 ),
                 const SizedBox(height: 24),
 
-                // Countdown box
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0D0F1A),
+                    color: AppColors.card,
                     borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.border),
                   ),
                   child: Column(
                     children: [
@@ -119,7 +118,7 @@ class _ShieldScreenState extends State<ShieldScreen> with SingleTickerProviderSt
                           style: GoogleFonts.inter(fontSize: 11, letterSpacing: 2, color: AppColors.textMuted, fontWeight: FontWeight.w500)),
                       const SizedBox(height: 4),
                       Text(_formatCountdown(_msLeft),
-                          style: GoogleFonts.inter(fontSize: 48, fontWeight: FontWeight.w700, color: Colors.white)),
+                          style: GoogleFonts.inter(fontSize: 48, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                       Text('Resets at midnight',
                           style: GoogleFonts.inter(fontSize: 13, color: AppColors.textMuted)),
                     ],
@@ -127,13 +126,13 @@ class _ShieldScreenState extends State<ShieldScreen> with SingleTickerProviderSt
                 ),
                 const SizedBox(height: 16),
 
-                // Streak status
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0D0F1A),
+                    color: AppColors.card,
                     borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.border),
                   ),
                   child: Row(
                     children: [
@@ -156,15 +155,14 @@ class _ShieldScreenState extends State<ShieldScreen> with SingleTickerProviderSt
                 const SizedBox(height: 24),
 
                 Text('NO MERCY',
-                    style: GoogleFonts.inter(fontSize: 12, letterSpacing: 5, color: const Color(0xFF1A1F35), fontWeight: FontWeight.w700)),
+                    style: GoogleFonts.inter(fontSize: 12, letterSpacing: 5, color: AppColors.border, fontWeight: FontWeight.w700)),
 
-                // Demo dismiss (hidden in strict mode)
                 if (!shield.settings.strictMode) ...[
                   const SizedBox(height: 16),
                   GestureDetector(
                     onTap: shield.dismissShield,
                     child: Text('dismiss (demo only)',
-                        style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF1A1F35))),
+                        style: GoogleFonts.inter(fontSize: 11, color: AppColors.border)),
                   ),
                 ],
               ],
