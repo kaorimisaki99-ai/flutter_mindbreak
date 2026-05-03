@@ -230,6 +230,10 @@ _loading = false;
     _isLocked = false;
     _shieldTarget = null;
     notifyListeners();
+    // Clear the native block list so the user isn't trapped —
+    // the list is re-written next time _writeBlockerPrefs() runs.
+    _usageChannel.invokeMethod('setBlockedPackages', {'packages': <String>[]})
+        .catchError((_) {});
   }
 
   void simulateUsage(String id, int minutes) {
@@ -246,6 +250,6 @@ _loading = false;
     _isLocked = false;
     _shieldTarget = null;
     notifyListeners();
-    _persist();
+    _persist(); // _persist calls _writeBlockerPrefs which sends empty list
   }
 }
