@@ -95,7 +95,7 @@ class _PermissionScreenState extends State<PermissionScreen>
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.15),
+                  color: AppColors.primary.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Icon(Icons.shield_outlined,
@@ -235,7 +235,7 @@ class _PermissionTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isGranted
-              ? AppColors.success.withValues(alpha: 0.4)
+              ? AppColors.success.withOpacity(0.4)
               : AppColors.border,
           width: 1.5,
         ),
@@ -247,7 +247,7 @@ class _PermissionTile extends StatelessWidget {
             height: 44,
             decoration: BoxDecoration(
               color: isGranted
-                  ? AppColors.success.withValues(alpha: 0.15)
+                  ? AppColors.success.withOpacity(0.15)
                   : AppColors.cardElevated,
               borderRadius: BorderRadius.circular(12),
             ),
@@ -282,7 +282,7 @@ class _PermissionTile extends StatelessWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: AppColors.success.withValues(alpha: 0.15),
+                color: AppColors.success.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text('Granted',
@@ -298,10 +298,10 @@ class _PermissionTile extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 12, vertical: 7),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.15),
+                  color: AppColors.primary.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                      color: AppColors.primary.withValues(alpha: 0.3)),
+                      color: AppColors.primary.withOpacity(0.3)),
                 ),
                 child: Text('Enable',
                     style: GoogleFonts.inter(

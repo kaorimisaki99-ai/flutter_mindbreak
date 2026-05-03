@@ -61,7 +61,7 @@ class WeeklyBarChart extends StatelessWidget {
                     ? AppColors.danger
                     : isToday
                         ? AppColors.primary
-                        : AppColors.textMuted.withValues(alpha: 0.3);
+                        : AppColors.textMuted.withOpacity(0.3);
 
                 // Parse date for day label
                 final parts = day.date.split('-');
@@ -135,7 +135,7 @@ class WeeklyBarChart extends StatelessWidget {
               Container(
                 width: 16,
                 height: 1.5,
-                color: AppColors.danger.withValues(alpha: 0.5),
+                color: AppColors.danger.withOpacity(0.5),
               ),
               const SizedBox(width: 6),
               Text('${dailyLimitMinutes}m limit',

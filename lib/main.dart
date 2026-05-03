@@ -14,13 +14,10 @@ import 'screens/permission_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
   if (FirebaseAuth.instance.currentUser == null) {
     await FirebaseAuth.instance.signInAnonymously();
   }
-
   runApp(
     MultiProvider(
       providers: [
@@ -34,7 +31,6 @@ Future<void> main() async {
 
 class MindBreakApp extends StatelessWidget {
   const MindBreakApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -48,7 +44,6 @@ class MindBreakApp extends StatelessWidget {
 
 class PermissionGate extends StatefulWidget {
   const PermissionGate({super.key});
-
   @override
   State<PermissionGate> createState() => _PermissionGateState();
 }
@@ -69,23 +64,18 @@ class _PermissionGateState extends State<PermissionGate> {
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
-
   @override
   State<AppShell> createState() => _AppShellState();
 }
 
 class _AppShellState extends State<AppShell> {
   int _currentIndex = 0;
-
   final _screens = const [HomeScreen(), StatsScreen(), SettingsScreen()];
 
   @override
   Widget build(BuildContext context) {
     final shield = context.watch<ShieldProvider>();
-
-    if (shield.isLocked) {
-      return const ShieldScreen();
-    }
+    if (shield.isLocked) return const ShieldScreen();
 
     return Scaffold(
       body: _screens[_currentIndex],
