@@ -75,7 +75,7 @@ class WeeklyBarChart extends StatelessWidget {
                             ? AppColors.danger
                             : isToday
                                 ? AppColors.primary
-                                : AppColors.textMuted.withValues(alpha: 0.3);
+                                : AppColors.textMuted.withOpacity(0.3);
 
                         final dayObj = DateTime.tryParse(day.date.replaceAll('-', '/') + ' 00:00:00');
                         final label = dayObj != null
@@ -162,7 +162,7 @@ class _DashedLinePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = AppColors.danger.withValues(alpha: 0.4)
+      ..color = AppColors.danger.withOpacity(0.4)
       ..strokeWidth = 1;
     const dashWidth = 4.0;
     const dashSpace = 3.0;

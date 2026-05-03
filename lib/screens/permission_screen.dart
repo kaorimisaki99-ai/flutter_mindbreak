@@ -1,250 +1,175 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
-import '../models/game_state.dart';
-import '../providers/game_provider.dart';
-import '../providers/shield_provider.dart';
 
-class StatsScreen extends StatelessWidget {
-  const StatsScreen({super.key});
+class PermissionScreen extends StatefulWidget {
+  final VoidCallback onAllGranted;
+  const PermissionScreen({super.key, required this.onAllGranted});
+
+  @override
+  State<PermissionScreen> createState() => _PermissionScreenState();
+}
+
+class _PermissionScreenState extends State<PermissionScreen> {
+  static const _channel = MethodChannel('com.mindbreak.app/permissions');
+
+  bool _usageGranted = false;
+  bool _accessibilityGranted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkPermissions();
+  }
+
+  Future<void> _checkPermissions() async {
+    try {
+      final usage = await _channel.invokeMethod<bool>('hasUsageAccess') ?? false;
+      final accessibility = await _channel.invokeMethod<bool>('hasAccessibilityAccess') ?? false;
+      if (!mounted) return;
+      setState(() {
+        _usageGranted = usage;
+        _accessibilityGranted = accessibility;
+      });
+      if (usage && accessibility) widget.onAllGranted();
+    } catch (_) {
+      if (mounted) widget.onAllGranted();
+    }
+  }
+
+  Future<void> _requestUsage() async {
+    try { await _channel.invokeMethod('requestUsageAccess'); } catch (_) {}
+    await Future.delayed(const Duration(seconds: 1));
+    await _checkPermissions();
+  }
+
+  Future<void> _requestAccessibility() async {
+    try { await _channel.invokeMethod('requestAccessibilityAccess'); } catch (_) {}
+    await Future.delayed(const Duration(seconds: 1));
+    await _checkPermissions();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final game = context.watch<GameProvider>();
-    final shield = context.watch<ShieldProvider>();
-    final state = game.state;
-    final rank = game.rankInfo;
-    final progress = game.rankProgress;
-
-    final streakColor = state.streak >= 7
-        ? AppColors.success
-        : state.streak >= 3
-            ? AppColors.warning
-            : AppColors.primary;
-
+    final allGranted = _usageGranted && _accessibilityGranted;
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 32, 20, 20),
-          children: [
-            Text('Your Stats',
-                style: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-            const SizedBox(height: 16),
-
-            // Points & Rank Widget
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: rank.color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: rank.color.withValues(alpha: 0.4)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 32),
+              Container(
+                width: 64, height: 64,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                ),
+                child: const Icon(Icons.shield_outlined, size: 32, color: AppColors.primary),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(rank.title.toUpperCase(),
-                                style: GoogleFonts.inter(
-                                    fontSize: 12, letterSpacing: 1.5, fontWeight: FontWeight.w600, color: rank.color)),
-                            const SizedBox(height: 4),
-                            RichText(
-                              text: TextSpan(
-                                children: [
-                                  TextSpan(
-                                    text: '${state.points}',
-                                    style: GoogleFonts.inter(fontSize: 40, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-                                  ),
-                                  TextSpan(
-                                    text: ' pts',
-                                    style: GoogleFonts.inter(fontSize: 18, color: AppColors.textMuted),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: rank.color.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: rank.color.withValues(alpha: 0.6)),
-                        ),
-                        child: const Icon(Icons.military_tech, color: Colors.white, size: 28),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(3),
-                    child: LinearProgressIndicator(
-                      value: progress,
-                      backgroundColor: AppColors.muted,
-                      valueColor: AlwaysStoppedAnimation(rank.color),
-                      minHeight: 6,
+              const SizedBox(height: 24),
+              Text('Setup Required',
+                  style: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              const SizedBox(height: 8),
+              Text('MindBreak needs two permissions to track and block distracting apps.',
+                  style: GoogleFonts.inter(fontSize: 15, color: AppColors.textMuted, height: 1.5)),
+              const SizedBox(height: 32),
+              _PermissionTile(
+                icon: Icons.bar_chart_outlined,
+                title: 'Usage Access',
+                description: 'Lets MindBreak see how long you use each app.',
+                granted: _usageGranted,
+                onTap: _usageGranted ? null : _requestUsage,
+              ),
+              const SizedBox(height: 12),
+              _PermissionTile(
+                icon: Icons.accessibility_new_outlined,
+                title: 'Accessibility Service',
+                description: 'Lets MindBreak block apps when your limit is reached.',
+                granted: _accessibilityGranted,
+                onTap: _accessibilityGranted ? null : _requestAccessibility,
+              ),
+              const Spacer(),
+              if (allGranted)
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: widget.onAllGranted,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
+                    child: Text('Get Started',
+                        style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600)),
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(rank.title,
-                          style: GoogleFonts.inter(fontSize: 11, color: rank.color)),
-                      if (rank.title != 'Mind Master')
-                        Text('${rank.nextMin - state.points} pts to ${rank.nextTitle}',
-                            style: GoogleFonts.inter(fontSize: 11, color: AppColors.textMuted))
-                      else
-                        Text('Max rank reached', style: GoogleFonts.inter(fontSize: 11, color: rank.color)),
-                      Text(rank.nextTitle,
-                          style: GoogleFonts.inter(fontSize: 11, color: AppColors.textMuted)),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  // All ranks ladder
-                  ...kRanks.asMap().entries.map((entry) {
-                    final r = entry.value;
-                    final unlocked = state.points >= (r['min'] as int);
-                    final isCurrent = r['title'] == rank.title;
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 4),
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: isCurrent ? (r['color'] as Color).withValues(alpha: 0.15) : Colors.transparent,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 8, height: 8,
-                            decoration: BoxDecoration(
-                              color: unlocked ? r['color'] as Color : AppColors.muted,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(r['title'] as String,
-                                style: GoogleFonts.inter(
-                                    fontSize: 14,
-                                    fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w400,
-                                    color: isCurrent
-                                        ? r['color'] as Color
-                                        : unlocked
-                                            ? AppColors.textPrimary
-                                            : AppColors.textMuted)),
-                          ),
-                          Text('${r['min']} pts',
-                              style: GoogleFonts.inter(fontSize: 12, color: AppColors.textMuted)),
-                          if (isCurrent) ...[
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: r['color'] as Color,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text('YOU', style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.black)),
-                            ),
-                          ],
-                        ],
-                      ),
-                    );
-                  }),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            // Streak Card
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: streakColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: streakColor.withValues(alpha: 0.4)),
-              ),
-              child: Column(
-                children: [
-                  Text('${state.streak}',
-                      style: GoogleFonts.inter(fontSize: 64, fontWeight: FontWeight.w700, color: streakColor, height: 1)),
-                  Text('DAY STREAK',
-                      style: GoogleFonts.inter(fontSize: 13, letterSpacing: 2, fontWeight: FontWeight.w600, color: streakColor)),
-                  const SizedBox(height: 8),
-                  Text(
-                    state.streak == 0
-                        ? 'Stay under today\'s limit to start'
-                        : state.streak >= 7
-                            ? 'You\'re legendary. Don\'t stop now.'
-                            : state.streak >= 3
-                                ? 'You\'re on fire. Keep going.'
-                                : 'Good start. Build the habit.',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(fontSize: 13, color: AppColors.textMuted),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            // Stats Grid
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              mainAxisSpacing: 10,
-              crossAxisSpacing: 10,
-              childAspectRatio: 1.3,
-              children: [
-                _StatCell(icon: Icons.emoji_events_outlined, color: AppColors.warning, value: '${state.longestStreak}', unit: 'days', label: 'Best Streak'),
-                _StatCell(icon: Icons.lock_outline, color: AppColors.danger, value: '${state.totalLockedDays}', unit: 'days', label: 'Times Locked'),
-                _StatCell(icon: Icons.check_circle_outline, color: AppColors.success, value: '${state.totalCleanDays}', unit: 'days', label: 'Clean Days'),
-                _StatCell(icon: Icons.access_time_outlined, color: AppColors.primary, value: '${shield.settings.dailyLimitMinutes}', unit: 'min', label: 'Daily Limit'),
-              ],
-            ),
-            const SizedBox(height: 80),
-          ],
+                )
+              else
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(color: AppColors.muted, borderRadius: BorderRadius.circular(12)),
+                  child: Text('Grant both permissions above to continue.',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(fontSize: 13, color: AppColors.textMuted)),
+                ),
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _StatCell extends StatelessWidget {
+class _PermissionTile extends StatelessWidget {
   final IconData icon;
-  final Color color;
-  final String value;
-  final String unit;
-  final String label;
-
-  const _StatCell({required this.icon, required this.color, required this.value, required this.unit, required this.label});
+  final String title;
+  final String description;
+  final bool granted;
+  final VoidCallback? onTap;
+  const _PermissionTile({required this.icon, required this.title, required this.description, required this.granted, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(16)),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 20, color: color),
-          const SizedBox(height: 6),
-          RichText(
-            text: TextSpan(children: [
-              TextSpan(text: value, style: GoogleFonts.inter(fontSize: 26, fontWeight: FontWeight.w700, color: color)),
-              TextSpan(text: ' $unit', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textMuted)),
-            ]),
-          ),
-          Text(label, style: GoogleFonts.inter(fontSize: 11, color: AppColors.textMuted), textAlign: TextAlign.center),
-        ],
+    final color = granted ? AppColors.success : AppColors.primary;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: granted ? AppColors.success.withOpacity(0.08) : AppColors.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: granted ? AppColors.success.withOpacity(0.4) : AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44, height: 44,
+              decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
+              child: Icon(icon, size: 22, color: color),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                  const SizedBox(height: 2),
+                  Text(description, style: GoogleFonts.inter(fontSize: 12, color: AppColors.textMuted)),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(granted ? Icons.check_circle : Icons.arrow_forward_ios,
+                size: granted ? 22 : 16,
+                color: granted ? AppColors.success : AppColors.textMuted),
+          ],
+        ),
       ),
     );
   }

@@ -124,7 +124,7 @@ class HomeScreen extends StatelessWidget {
                                 value: pct,
                                 backgroundColor: AppColors.muted,
                                 valueColor: AlwaysStoppedAnimation(
-                                    i == 0 ? AppColors.primary : AppColors.textMuted.withValues(alpha: 0.5)),
+                                    i == 0 ? AppColors.primary : AppColors.textMuted.withOpacity(0.5)),
                                 minHeight: 3,
                               ),
                             ),
@@ -279,7 +279,7 @@ class _TopAppWidget extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: isOver ? AppColors.danger.withValues(alpha: 0.15) : AppColors.cardElevated,
+                  color: isOver ? AppColors.danger.withOpacity(0.15) : AppColors.cardElevated,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(iconData, color: isOver ? AppColors.danger : AppColors.primary),
@@ -299,7 +299,7 @@ class _TopAppWidget extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: isOver ? AppColors.danger : AppColors.success.withValues(alpha: 0.2),
+                  color: isOver ? AppColors.danger : AppColors.success.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(

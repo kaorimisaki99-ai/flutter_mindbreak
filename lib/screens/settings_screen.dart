@@ -67,7 +67,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   margin: const EdgeInsets.only(bottom: 10),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: active ? color.withValues(alpha: 0.12) : AppColors.card,
+                    color: active ? color.withOpacity(0.12) : AppColors.card,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: active ? color : AppColors.border, width: active ? 1.5 : 1),
                   ),
@@ -76,7 +76,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       Container(
                         width: 40, height: 40,
                         decoration: BoxDecoration(
-                          color: active ? color.withValues(alpha: 0.2) : AppColors.muted,
+                          color: active ? color.withOpacity(0.2) : AppColors.muted,
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(preset['icon'] as IconData, color: active ? color : AppColors.textMuted, size: 20),
@@ -211,7 +211,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                       Container(
                         width: 44, height: 44,
-                        decoration: BoxDecoration(color: AppColors.secondary.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12)),
+                        decoration: BoxDecoration(color: AppColors.secondary.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
                         child: const Icon(Icons.smartphone, color: AppColors.secondary),
                       ),
                       const SizedBox(width: 12),
@@ -378,10 +378,10 @@ class _ExcludePickerSheetState extends State<_ExcludePickerSheet> {
                           leading: Container(
                             width: 40, height: 40,
                             decoration: BoxDecoration(
-                              color: isExcluded ? AppColors.success.withValues(alpha: 0.15) : AppColors.card,
+                              color: isExcluded ? AppColors.success.withOpacity(0.15) : AppColors.card,
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
-                                color: isExcluded ? AppColors.success.withValues(alpha: 0.4) : AppColors.border,
+                                color: isExcluded ? AppColors.success.withOpacity(0.4) : AppColors.border,
                               ),
                             ),
                             child: Icon(
@@ -402,7 +402,7 @@ class _ExcludePickerSheetState extends State<_ExcludePickerSheet> {
                               ? Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: AppColors.success.withValues(alpha: 0.15),
+                                    color: AppColors.success.withOpacity(0.15),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text('ALWAYS SAFE',
@@ -471,8 +471,8 @@ class _AppChip extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: EdgeInsets.only(left: 10, top: 6, bottom: 6, right: isHardcoded ? 10 : 4),
         decoration: BoxDecoration(
-          color: AppColors.success.withValues(alpha: 0.12),
-          border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+          color: AppColors.success.withOpacity(0.12),
+          border: Border.all(color: AppColors.success.withOpacity(0.3)),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [

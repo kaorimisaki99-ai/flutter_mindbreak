@@ -106,7 +106,7 @@ _loading = false;
             id: pkg,
             name: appName,
             packageId: pkg,
-            iconAsset: TrackedApp.iconAssetFor(pkg),
+            iconAsset: 'smartphone',
             usedMinutesToday: 0,
           ));
         }
@@ -143,7 +143,7 @@ _loading = false;
             id: pkg,
             name: pkg.split('.').last,
             packageId: pkg,
-            iconAsset: TrackedApp.iconAssetFor(pkg),
+            iconAsset: 'smartphone',
             usedMinutesToday: mins,
           );
         }
