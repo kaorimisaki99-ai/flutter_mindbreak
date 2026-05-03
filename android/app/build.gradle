@@ -18,7 +18,7 @@ android {
     namespace "com.mindbreak.app"
     compileSdkVersion 34
     ndkVersion flutter.ndkVersion
-    multiDexEnabled true
+    
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_11
@@ -37,6 +37,7 @@ android {
         applicationId "com.mindbreak.app"
         minSdkVersion 21
         targetSdkVersion 30
+        multiDexEnabled true
         
         versionCode 1
         versionName "1.0.0"
