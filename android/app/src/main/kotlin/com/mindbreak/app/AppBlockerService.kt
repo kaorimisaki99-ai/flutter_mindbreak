@@ -7,15 +7,18 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.view.accessibility.AccessibilityEvent
 import android.provider.Settings
-import android.text.TextUtils
 
 /**
  * AccessibilityService that monitors which app is in the foreground.
- * When the blocked app is opened and is over its time limit, it
- * launches MindBreak (bringing the ShieldScreen to the foreground).
+ * When a blocked app is opened, it launches MindBreak (ShieldScreen).
  *
- * The Flutter side sets "blocked_packages" in SharedPreferences.
- * This service reads them to know which packages to intercept.
+ * The Flutter side writes "blocked_packages" to SharedPreferences via
+ * the "setBlockedPackages" MethodChannel call. This service reads them.
+ *
+ * FIXES:
+ * 1. lastInterceptedPackage is reset when MindBreak comes to foreground,
+ *    so re-opening a blocked app always triggers the block again.
+ * 2. Null-safe event handling.
  */
 class AppBlockerService : AccessibilityService() {
 
@@ -30,13 +33,20 @@ class AppBlockerService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val pkg = event.packageName?.toString() ?: return
-        if (pkg == packageName) return  // Don't intercept MindBreak itself
+
+        // FIX: When MindBreak itself is in the foreground, reset the last
+        // intercepted package so the block fires again if the user goes back.
+        if (pkg == packageName) {
+            lastInterceptedPackage = null
+            return
+        }
 
         val blockedPackages = prefs.getStringSet("blocked_packages", emptySet()) ?: emptySet()
+
         if (pkg in blockedPackages && pkg != lastInterceptedPackage) {
             lastInterceptedPackage = pkg
 
-            // Launch MindBreak to foreground — FlutterApp shows ShieldScreen
+            // Launch MindBreak to foreground — Flutter shows ShieldScreen
             val intent = Intent(applicationContext, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
                 putExtra("shield_target", pkg)

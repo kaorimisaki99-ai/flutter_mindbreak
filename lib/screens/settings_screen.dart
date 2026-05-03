@@ -4,9 +4,10 @@ import 'package:provider/provider.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../theme/app_theme.dart';
-import '../models/app_settings.dart';
 import '../providers/game_provider.dart';
 import '../providers/shield_provider.dart';
+import '../models/tracked_app.dart';
+import '../models/app_settings.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -16,7 +17,6 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   String _deviceId = 'loading...';
-  String _appSearch = '';
 
   @override
   void initState() {
@@ -46,18 +46,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final game = context.watch<GameProvider>();
     final settings = shield.settings;
 
-    // All installed apps sorted alphabetically
-    final allApps = [...shield.trackedApps]..sort((a, b) => a.name.compareTo(b.name));
-
-    // Filter by search
-    final filteredApps = _appSearch.isEmpty
-        ? allApps
-        : allApps.where((a) => a.name.toLowerCase().contains(_appSearch.toLowerCase())).toList();
-
-    // Split into excluded (checked) and included (unchecked)
-    final excludedApps = filteredApps.where((a) => settings.isExcluded(a.packageId)).toList();
-    final includedApps = filteredApps.where((a) => !settings.isExcluded(a.packageId)).toList();
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -68,7 +56,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
             const SizedBox(height: 16),
 
-            // ── Daily Limit ──────────────────────────────────────
+            // ── Daily Limit ──────────────────────────────────────────────
             _SectionTitle('Daily Time Limit'),
             ..._limitPresets.map((preset) {
               final active = settings.dailyLimitMinutes == (preset['minutes'] as int);
@@ -79,7 +67,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   margin: const EdgeInsets.only(bottom: 10),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: active ? color.withOpacity(0.10) : AppColors.card,
+                    color: active ? color.withValues(alpha: 0.12) : AppColors.card,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: active ? color : AppColors.border, width: active ? 1.5 : 1),
                   ),
@@ -88,7 +76,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       Container(
                         width: 40, height: 40,
                         decoration: BoxDecoration(
-                          color: active ? color.withOpacity(0.2) : AppColors.muted,
+                          color: active ? color.withValues(alpha: 0.2) : AppColors.muted,
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(preset['icon'] as IconData, color: active ? color : AppColors.textMuted, size: 20),
@@ -99,7 +87,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(preset['label'] as String,
-                                style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700,
+                                style: GoogleFonts.inter(
+                                    fontSize: 18, fontWeight: FontWeight.w700,
                                     color: active ? color : AppColors.textPrimary)),
                             Text(preset['desc'] as String,
                                 style: GoogleFonts.inter(fontSize: 13, color: AppColors.textMuted)),
@@ -110,8 +99,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(6)),
-                          child: Text('ACTIVE',
-                              style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white)),
+                          child: Text('ACTIVE', style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.black)),
                         ),
                     ],
                   ),
@@ -119,145 +107,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
               );
             }),
 
-            // ── App Time Limit List ───────────────────────────────
-            const SizedBox(height: 8),
-            _SectionTitle('App Time Limits'),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.primary.withOpacity(0.2)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.info_outline, size: 16, color: AppColors.primary),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Checked apps are EXCLUDED from time limits. Uncheck an app to start tracking it.',
-                      style: GoogleFonts.inter(fontSize: 12, color: AppColors.primary, height: 1.4),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Search box
-            Container(
-              decoration: BoxDecoration(
-                color: AppColors.card,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: TextField(
-                onChanged: (v) => setState(() => _appSearch = v),
-                style: GoogleFonts.inter(fontSize: 14, color: AppColors.textPrimary),
-                decoration: InputDecoration(
-                  hintText: 'Search apps...',
-                  hintStyle: GoogleFonts.inter(fontSize: 14, color: AppColors.textMuted),
-                  prefixIcon: const Icon(Icons.search, color: AppColors.textMuted, size: 20),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-              ),
-            ),
             const SizedBox(height: 8),
 
-            // Stats row
-            Row(
-              children: [
-                _StatChip(
-                  label: '${includedApps.length} tracked',
-                  color: AppColors.danger,
-                  icon: Icons.timer_outlined,
-                ),
-                const SizedBox(width: 8),
-                _StatChip(
-                  label: '${excludedApps.length} excluded',
-                  color: AppColors.success,
-                  icon: Icons.check_circle_outline,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // App list
-            Container(
-              decoration: BoxDecoration(
-                color: AppColors.card,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: allApps.isEmpty
-                  ? Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Center(
-                        child: Text('No apps found.\nGrant permissions and restart.',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.inter(fontSize: 14, color: AppColors.textMuted)),
-                      ),
-                    )
-                  : filteredApps.isEmpty
-                      ? Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Center(
-                            child: Text('No apps match "$_appSearch"',
-                                style: GoogleFonts.inter(fontSize: 14, color: AppColors.textMuted)),
-                          ),
-                        )
-                      : Column(
-                          children: [
-                            // Excluded apps (checked) first
-                            if (excludedApps.isNotEmpty) ...[
-                              _AppListHeader(
-                                label: 'EXCLUDED FROM LIMITS (${excludedApps.length})',
-                                color: AppColors.success,
-                              ),
-                              ...excludedApps.asMap().entries.map((entry) {
-                                final isLast = entry.key == excludedApps.length - 1 && includedApps.isEmpty;
-                                return _AppTile(
-                                  app: entry.value,
-                                  isExcluded: true,
-                                  showDivider: !isLast,
-                                  onToggle: () => shield.toggleExclusion(entry.value.packageId),
-                                );
-                              }),
-                            ],
-
-                            // Included apps (unchecked) — subject to time limit
-                            if (includedApps.isNotEmpty) ...[
-                              _AppListHeader(
-                                label: 'TIME LIMITED (${includedApps.length})',
-                                color: AppColors.danger,
-                              ),
-                              ...includedApps.asMap().entries.map((entry) {
-                                final isLast = entry.key == includedApps.length - 1;
-                                return _AppTile(
-                                  app: entry.value,
-                                  isExcluded: false,
-                                  showDivider: !isLast,
-                                  onToggle: () => shield.toggleExclusion(entry.value.packageId),
-                                );
-                              }),
-                            ],
-                          ],
-                        ),
-            ),
-
-            // ── Behavior ──────────────────────────────────────────
-            const SizedBox(height: 20),
+            // ── Behaviour ────────────────────────────────────────────────
             _SectionTitle('Behavior'),
             Container(
-              decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: AppColors.border)),
+              decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(18)),
               child: Column(
                 children: [
                   _ToggleRow(
                     icon: Icons.bolt,
                     label: 'Strict Mode',
-                    sublabel: 'Hides dismiss on lock screen',
+                    sublabel: 'Hides dismiss on lock screen — truly no way out',
                     value: settings.strictMode,
                     onChanged: (v) => shield.updateSettings(settings.copyWith(strictMode: v)),
                   ),
@@ -280,16 +141,69 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
 
-            // ── Account ───────────────────────────────────────────
             const SizedBox(height: 14),
+
+            // ── Excluded Apps ────────────────────────────────────────────
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _SectionTitle('Excluded Apps'),
+                TextButton.icon(
+                  onPressed: () => _openExcludePicker(context, shield),
+                  icon: const Icon(Icons.add, size: 16, color: AppColors.primary),
+                  label: Text('Manage', style: GoogleFonts.inter(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w600)),
+                ),
+              ],
+            ),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(16)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('These apps will never be blocked by MindBreak.',
+                      style: GoogleFonts.inter(fontSize: 13, color: AppColors.textMuted)),
+                  const SizedBox(height: 10),
+
+                  // Hardcoded safety apps badge
+                  Wrap(
+                    spacing: 8, runSpacing: 8,
+                    children: [
+                      // Hardcoded ones
+                      ..._hardcodedSafeLabels.map((name) => _AppChip(
+                            label: name,
+                            isHardcoded: true,
+                            onRemove: null,
+                          )),
+                      // User-excluded apps
+                      ...settings.excludedPackages.map((pkg) {
+                        final app = shield.allApps.firstWhere(
+                          (a) => a.packageId == pkg,
+                          orElse: () => TrackedApp(id: pkg, name: pkg.split('.').last, packageId: pkg, iconAsset: 'smartphone'),
+                        );
+                        return _AppChip(
+                          label: app.name,
+                          isHardcoded: false,
+                          onRemove: () => shield.toggleExcluded(pkg),
+                        );
+                      }),
+
+                      if (settings.excludedPackages.isEmpty)
+                        Text('No user-excluded apps yet. Tap Manage to add.',
+                            style: GoogleFonts.inter(fontSize: 12, color: AppColors.textMuted)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 14),
+
+            // ── Account ──────────────────────────────────────────────────
             _SectionTitle('Account'),
             Container(
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.card,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: AppColors.border),
-              ),
+              decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(18)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -297,9 +211,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                       Container(
                         width: 44, height: 44,
-                        decoration: BoxDecoration(
-                            color: AppColors.secondary.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(12)),
+                        decoration: BoxDecoration(color: AppColors.secondary.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12)),
                         child: const Icon(Icons.smartphone, color: AppColors.secondary),
                       ),
                       const SizedBox(width: 12),
@@ -308,8 +220,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text('One Device · One Account',
-                                style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimary)),
+                                style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                            const SizedBox(height: 2),
                             Text('No sign-in. No cloud sync. No cheating.',
                                 style: GoogleFonts.inter(fontSize: 13, color: AppColors.textMuted)),
                           ],
@@ -324,14 +236,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('DEVICE ID',
-                            style: GoogleFonts.inter(fontSize: 10, letterSpacing: 1.5,
-                                color: AppColors.textMuted, fontWeight: FontWeight.w500)),
+                        Text('DEVICE ID', style: GoogleFonts.inter(fontSize: 10, letterSpacing: 1.5, color: AppColors.textMuted, fontWeight: FontWeight.w500)),
                         const SizedBox(height: 4),
-                        Text(_deviceId,
-                            style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary),
-                            overflow: TextOverflow.ellipsis),
+                        Text(_deviceId, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary), overflow: TextOverflow.ellipsis),
                       ],
                     ),
                   ),
@@ -359,122 +266,229 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
-}
 
-// ── Helper widgets ────────────────────────────────────────────────────────────
+  static const _hardcodedSafeLabels = ['Phone', 'Emergency SOS', 'Maps', 'Messages', 'MindBreak'];
 
-class _AppListHeader extends StatelessWidget {
-  final String label;
-  final Color color;
-  const _AppListHeader({required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
-          border: Border(bottom: BorderSide(color: color.withOpacity(0.2))),
-        ),
-        child: Text(label,
-            style: GoogleFonts.inter(
-                fontSize: 10, letterSpacing: 1.5, fontWeight: FontWeight.w700, color: color)),
-      );
-}
-
-class _AppTile extends StatelessWidget {
-  final dynamic app;
-  final bool isExcluded;
-  final bool showDivider;
-  final VoidCallback onToggle;
-
-  const _AppTile({
-    required this.app,
-    required this.isExcluded,
-    required this.showDivider,
-    required this.onToggle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        ListTile(
-          dense: true,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
-          leading: Container(
-            width: 36, height: 36,
-            decoration: BoxDecoration(
-              color: isExcluded
-                  ? AppColors.success.withOpacity(0.1)
-                  : AppColors.danger.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              Icons.smartphone_outlined,
-              size: 18,
-              color: isExcluded ? AppColors.success : AppColors.danger,
-            ),
-          ),
-          title: Text(
-            app.name,
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          subtitle: Text(
-            app.packageId,
-            style: GoogleFonts.inter(fontSize: 10, color: AppColors.textMuted),
-            overflow: TextOverflow.ellipsis,
-          ),
-          trailing: Transform.scale(
-            scale: 0.85,
-            child: Checkbox(
-              value: isExcluded,
-              onChanged: (_) => onToggle(),
-              activeColor: AppColors.success,
-              checkColor: Colors.white,
-              side: BorderSide(
-                color: isExcluded ? AppColors.success : AppColors.textMuted,
-                width: 1.5,
-              ),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-            ),
-          ),
-          onTap: onToggle,
-        ),
-        if (showDivider)
-          Divider(height: 1, color: AppColors.border, indent: 14, endIndent: 14),
-      ],
+  void _openExcludePicker(BuildContext context, ShieldProvider shield) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ExcludePickerSheet(shield: shield),
     );
   }
 }
 
-class _StatChip extends StatelessWidget {
+// ── Exclude Picker Bottom Sheet ──────────────────────────────────────────────
+
+class _ExcludePickerSheet extends StatefulWidget {
+  final ShieldProvider shield;
+  const _ExcludePickerSheet({required this.shield});
+
+  @override
+  State<_ExcludePickerSheet> createState() => _ExcludePickerSheetState();
+}
+
+class _ExcludePickerSheetState extends State<_ExcludePickerSheet> {
+  String _search = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final shield = context.watch<ShieldProvider>();
+    final allApps = shield.allApps
+      ..sort((a, b) => a.name.compareTo(b.name));
+
+    final filtered = _search.isEmpty
+        ? allApps
+        : allApps
+            .where((a) => a.name.toLowerCase().contains(_search.toLowerCase()) ||
+                a.packageId.toLowerCase().contains(_search.toLowerCase()))
+            .toList();
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.85,
+      maxChildSize: 0.95,
+      minChildSize: 0.5,
+      builder: (_, controller) => Container(
+        decoration: const BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          children: [
+            // Handle
+            Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 8),
+              width: 40, height: 4,
+              decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Exclude Apps',
+                      style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                  const SizedBox(height: 4),
+                  Text('Selected apps will never be blocked.',
+                      style: GoogleFonts.inter(fontSize: 13, color: AppColors.textMuted)),
+                  const SizedBox(height: 12),
+
+                  // Search bar
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.card,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: TextField(
+                      onChanged: (v) => setState(() => _search = v),
+                      style: GoogleFonts.inter(fontSize: 14, color: AppColors.textPrimary),
+                      decoration: InputDecoration(
+                        hintText: 'Search apps…',
+                        hintStyle: GoogleFonts.inter(fontSize: 14, color: AppColors.textMuted),
+                        prefixIcon: const Icon(Icons.search, size: 18, color: AppColors.textMuted),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            Expanded(
+              child: filtered.isEmpty
+                  ? Center(
+                      child: Text('No apps found',
+                          style: GoogleFonts.inter(fontSize: 14, color: AppColors.textMuted)),
+                    )
+                  : ListView.builder(
+                      controller: controller,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: filtered.length,
+                      itemBuilder: (_, i) {
+                        final app = filtered[i];
+                        final isExcluded = shield.isExcluded(app.packageId);
+                        final isHardcoded = AppSettings.hardcodedSafePackages.contains(app.packageId);
+
+                        return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          leading: Container(
+                            width: 40, height: 40,
+                            decoration: BoxDecoration(
+                              color: isExcluded ? AppColors.success.withValues(alpha: 0.15) : AppColors.card,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: isExcluded ? AppColors.success.withValues(alpha: 0.4) : AppColors.border,
+                              ),
+                            ),
+                            child: Icon(
+                              _iconFor(app.iconAsset),
+                              size: 18,
+                              color: isExcluded ? AppColors.success : AppColors.textMuted,
+                            ),
+                          ),
+                          title: Text(app.name,
+                              style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.textPrimary)),
+                          subtitle: Text(app.packageId,
+                              style: GoogleFonts.inter(fontSize: 11, color: AppColors.textMuted),
+                              overflow: TextOverflow.ellipsis),
+                          trailing: isHardcoded
+                              ? Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.success.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text('ALWAYS SAFE',
+                                      style: GoogleFonts.inter(
+                                          fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.success)),
+                                )
+                              : Checkbox(
+                                  value: isExcluded,
+                                  activeColor: AppColors.success,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                  onChanged: (_) => shield.toggleExcluded(app.packageId),
+                                ),
+                          onTap: isHardcoded ? null : () => shield.toggleExcluded(app.packageId),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _iconFor(String asset) {
+    switch (asset) {
+      case 'photo_camera':   return Icons.photo_camera_outlined;
+      case 'camera_alt':     return Icons.camera_alt_outlined;
+      case 'music_note':     return Icons.music_note_outlined;
+      case 'headphones':     return Icons.headphones_outlined;
+      case 'tag':            return Icons.tag;
+      case 'play_circle':    return Icons.play_circle_outline;
+      case 'movie':          return Icons.movie_outlined;
+      case 'thumb_up':       return Icons.thumb_up_outlined;
+      case 'chat':           return Icons.chat_outlined;
+      case 'send':           return Icons.send_outlined;
+      case 'forum':          return Icons.forum_outlined;
+      case 'language':       return Icons.language;
+      case 'email':          return Icons.email_outlined;
+      case 'map':            return Icons.map_outlined;
+      case 'alarm':          return Icons.alarm;
+      case 'calculate':      return Icons.calculate_outlined;
+      case 'event':          return Icons.event_outlined;
+      case 'settings':       return Icons.settings_outlined;
+      case 'phone':          return Icons.phone_outlined;
+      case 'sms':            return Icons.sms_outlined;
+      case 'photo_library':  return Icons.photo_library_outlined;
+      case 'sports_esports': return Icons.sports_esports_outlined;
+      case 'shopping_cart':  return Icons.shopping_cart_outlined;
+      case 'newspaper':      return Icons.newspaper_outlined;
+      case 'account_balance_wallet': return Icons.account_balance_wallet_outlined;
+      default:               return Icons.smartphone_outlined;
+    }
+  }
+}
+
+// ── Small widgets ────────────────────────────────────────────────────────────
+
+class _AppChip extends StatelessWidget {
   final String label;
-  final Color color;
-  final IconData icon;
-  const _StatChip({required this.label, required this.color, required this.icon});
+  final bool isHardcoded;
+  final VoidCallback? onRemove;
+
+  const _AppChip({required this.label, required this.isHardcoded, required this.onRemove});
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: EdgeInsets.only(left: 10, top: 6, bottom: 6, right: isHardcoded ? 10 : 4),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: AppColors.success.withValues(alpha: 0.12),
+          border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withOpacity(0.3)),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 12, color: color),
-            const SizedBox(width: 4),
-            Text(label,
-                style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(isHardcoded ? Icons.lock_outline : Icons.check,
+              size: 10, color: AppColors.success),
+          const SizedBox(width: 4),
+          Text(label,
+              style: GoogleFonts.inter(fontSize: 12, color: AppColors.success, fontWeight: FontWeight.w500)),
+          if (!isHardcoded && onRemove != null) ...[
+            const SizedBox(width: 2),
+            GestureDetector(
+              onTap: onRemove,
+              child: const Icon(Icons.close, size: 14, color: AppColors.success),
+            ),
           ],
-        ),
+        ]),
       );
 }
 
@@ -485,8 +499,7 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(bottom: 10),
         child: Text(text,
-            style: GoogleFonts.inter(
-                fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+            style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
       );
 }
 
@@ -525,11 +538,8 @@ class _ToggleRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(label,
-                        style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary)),
-                    Text(sublabel,
-                        style: GoogleFonts.inter(fontSize: 12, color: AppColors.textMuted)),
+                    Text(label, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                    Text(sublabel, style: GoogleFonts.inter(fontSize: 12, color: AppColors.textMuted)),
                   ],
                 ),
               ),
@@ -537,8 +547,7 @@ class _ToggleRow extends StatelessWidget {
             ],
           ),
         ),
-        if (showDivider)
-          Divider(height: 1, color: AppColors.border, indent: 14, endIndent: 14),
+        if (showDivider) Divider(height: 1, color: AppColors.border, indent: 14, endIndent: 14),
       ],
     );
   }
@@ -552,12 +561,8 @@ class _AccountStat extends StatelessWidget {
   Widget build(BuildContext context) => Expanded(
         child: Column(
           children: [
-            Text(value,
-                style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700,
-                    color: AppColors.primary),
-                overflow: TextOverflow.ellipsis),
-            Text(label,
-                style: GoogleFonts.inter(fontSize: 11, color: AppColors.textMuted)),
+            Text(value, style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.primary), overflow: TextOverflow.ellipsis),
+            Text(label, style: GoogleFonts.inter(fontSize: 11, color: AppColors.textMuted)),
           ],
         ),
       );

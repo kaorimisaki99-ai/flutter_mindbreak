@@ -2,9 +2,35 @@ package com.mindbreak.app
 
 import android.app.usage.UsageStatsManager
 import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
 import java.util.Calendar
 
 object UsageStatsHelper {
+
+    /**
+     * Returns all apps that appear in the device's app drawer (have a launcher icon).
+     * This matches exactly what the user considers "an app" — including system apps
+     * like Settings, Calculator, Camera, etc.
+     * MindBreak itself is excluded.
+     */
+    fun getInstalledApps(context: Context): List<Map<String, String>> {
+        val pm = context.packageManager
+
+        val launchIntent = Intent(Intent.ACTION_MAIN, null).apply {
+            addCategory(Intent.CATEGORY_LAUNCHER)
+        }
+
+        return pm.queryIntentActivities(launchIntent, 0)
+            .filter { it.activityInfo.packageName != context.packageName }
+            .map { resolveInfo ->
+                val name = resolveInfo.loadLabel(pm).toString()
+                val pkg = resolveInfo.activityInfo.packageName
+                mapOf("packageName" to pkg, "appName" to name)
+            }
+            .distinctBy { it["packageName"] }
+            .sortedBy { it["appName"] }
+    }
 
     /**
      * Returns a map of packageName -> usedMinutesToday for all apps
@@ -13,7 +39,6 @@ object UsageStatsHelper {
     fun getTopAppUsageToday(context: Context): Map<String, Int> {
         val usm = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
 
-        // Start of today (midnight)
         val cal = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0)
             set(Calendar.MINUTE, 0)

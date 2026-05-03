@@ -15,6 +15,14 @@ class HomeScreen extends StatelessWidget {
     final game = context.watch<GameProvider>();
     final shield = context.watch<ShieldProvider>();
 
+    // Show a loading indicator while we enumerate installed apps
+    if (shield.loading) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF0F0F0F),
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     final topApp = shield.topAppSorted;
     final limit = shield.settings.dailyLimitMinutes;
     final isOver = topApp != null && topApp.usedMinutesToday >= limit;
@@ -33,7 +41,7 @@ class HomeScreen extends StatelessWidget {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+          padding: const EdgeInsets.fromLTRB(20, 32, 20, 20),
           children: [
             // Header
             Text('MindBreak',
@@ -42,28 +50,14 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(height: 2),
             Text(today,
                 style: GoogleFonts.inter(fontSize: 14, color: AppColors.textMuted)),
-            const SizedBox(height: 12),
-
-            // Debug status (remove after testing)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppColors.muted,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                'Apps: ${shield.trackedApps.length} · ${shield.debugStatus}',
-                style: GoogleFonts.inter(fontSize: 10, color: AppColors.textMuted),
-              ),
-            ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 18),
 
             // Weekly Bar Chart
             WeeklyBarChart(
               weeklyUsage: game.weeklyUsage,
               dailyLimitMinutes: limit,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 14),
 
             // Top App Widget
             if (topApp != null)
@@ -84,7 +78,7 @@ class HomeScreen extends StatelessWidget {
                 },
                 onViewLock: () => shield.triggerLock(topApp.name),
               ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 14),
 
             // All apps ranked list
             Text('ALL APPS TODAY',
@@ -96,7 +90,7 @@ class HomeScreen extends StatelessWidget {
               final app = entry.value;
               final pct = (app.usedMinutesToday / limit).clamp(0.0, 1.0);
               return Padding(
-                padding: const EdgeInsets.only(bottom: 4),
+                padding: const EdgeInsets.only(bottom: 8),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(
@@ -130,7 +124,7 @@ class HomeScreen extends StatelessWidget {
                                 value: pct,
                                 backgroundColor: AppColors.muted,
                                 valueColor: AlwaysStoppedAnimation(
-                                    i == 0 ? AppColors.primary : AppColors.textMuted.withOpacity(0.5)),
+                                    i == 0 ? AppColors.primary : AppColors.textMuted.withValues(alpha: 0.5)),
                                 minHeight: 3,
                               ),
                             ),
@@ -149,10 +143,10 @@ class HomeScreen extends StatelessWidget {
               );
             }),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 14),
             // Simulate section
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 border: Border.all(color: AppColors.border),
                 borderRadius: BorderRadius.circular(14),
@@ -192,7 +186,7 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 80),
           ],
         ),
       ),
@@ -201,11 +195,32 @@ class HomeScreen extends StatelessWidget {
 
   IconData _iconFor(String asset) {
     switch (asset) {
-      case 'photo_camera': return Icons.photo_camera_outlined;
-      case 'music_note': return Icons.music_note_outlined;
-      case 'tag': return Icons.tag;
-      case 'play_circle': return Icons.play_circle_outline;
-      default: return Icons.smartphone_outlined;
+      case 'photo_camera':   return Icons.photo_camera_outlined;
+      case 'camera_alt':     return Icons.camera_alt_outlined;
+      case 'music_note':     return Icons.music_note_outlined;
+      case 'headphones':     return Icons.headphones_outlined;
+      case 'tag':            return Icons.tag;
+      case 'play_circle':    return Icons.play_circle_outline;
+      case 'movie':          return Icons.movie_outlined;
+      case 'thumb_up':       return Icons.thumb_up_outlined;
+      case 'chat':           return Icons.chat_outlined;
+      case 'send':           return Icons.send_outlined;
+      case 'forum':          return Icons.forum_outlined;
+      case 'language':       return Icons.language;
+      case 'email':          return Icons.email_outlined;
+      case 'map':            return Icons.map_outlined;
+      case 'alarm':          return Icons.alarm;
+      case 'calculate':      return Icons.calculate_outlined;
+      case 'event':          return Icons.event_outlined;
+      case 'settings':       return Icons.settings_outlined;
+      case 'phone':          return Icons.phone_outlined;
+      case 'sms':            return Icons.sms_outlined;
+      case 'photo_library':  return Icons.photo_library_outlined;
+      case 'sports_esports': return Icons.sports_esports_outlined;
+      case 'shopping_cart':  return Icons.shopping_cart_outlined;
+      case 'newspaper':      return Icons.newspaper_outlined;
+      case 'account_balance_wallet': return Icons.account_balance_wallet_outlined;
+      default:               return Icons.smartphone_outlined;
     }
   }
 }
@@ -264,7 +279,7 @@ class _TopAppWidget extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: isOver ? AppColors.danger.withOpacity(0.15) : AppColors.cardElevated,
+                  color: isOver ? AppColors.danger.withValues(alpha: 0.15) : AppColors.cardElevated,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(iconData, color: isOver ? AppColors.danger : AppColors.primary),
@@ -284,7 +299,7 @@ class _TopAppWidget extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: isOver ? AppColors.danger : AppColors.success.withOpacity(0.2),
+                  color: isOver ? AppColors.danger : AppColors.success.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
