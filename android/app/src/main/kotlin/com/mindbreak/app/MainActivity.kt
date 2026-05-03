@@ -3,8 +3,8 @@ package com.mindbreak.app
 import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
-import android.os.Bundle
 import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -28,7 +28,6 @@ class MainActivity : FlutterActivity() {
                     }
 
                     "requestUsagePermission" -> {
-                        // Opens the special access settings page — user must grant manually
                         startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
                         result.success(null)
                     }
@@ -49,6 +48,12 @@ class MainActivity : FlutterActivity() {
                     "requestAccessibilityPermission" -> {
                         startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                         result.success(null)
+                    }
+
+                    "getInstalledApps" -> {
+                        // No permission needed — PackageManager is always available
+                        val apps = getInstalledUserApps()
+                        result.success(apps)
                     }
 
                     else -> result.notImplemented()
@@ -73,5 +78,36 @@ class MainActivity : FlutterActivity() {
             )
         }
         return mode == AppOpsManager.MODE_ALLOWED
+    }
+
+    private fun getInstalledUserApps(): List<Map<String, String>> {
+        val pm = packageManager
+        val excludedPackages = setOf(
+            packageName,
+            "com.android.launcher",
+            "com.android.launcher3",
+            "com.google.android.apps.nexuslauncher",
+            "com.android.systemui",
+            "com.sec.android.app.launcher",
+            "com.miui.home",
+            "com.huawei.android.launcher",
+            "com.oppo.launcher",
+        )
+
+        val intent = Intent(Intent.ACTION_MAIN).apply {
+            addCategory(Intent.CATEGORY_LAUNCHER)
+        }
+
+        return pm.queryIntentActivities(intent, 0)
+            .filter { it.activityInfo.packageName !in excludedPackages }
+            .map { resolveInfo ->
+                val pkg = resolveInfo.activityInfo.packageName
+                val appName = resolveInfo.loadLabel(pm).toString()
+                mapOf(
+                    "packageId" to pkg,
+                    "name" to appName,
+                )
+            }
+            .sortedBy { it["name"] }
     }
 }
