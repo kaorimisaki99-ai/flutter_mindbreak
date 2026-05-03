@@ -10,7 +10,7 @@ import '../models/app_settings.dart';
 const _usageChannel = MethodChannel('com.mindbreak.app/usage_stats');
 
 class ShieldProvider extends ChangeNotifier {
-  AppSettings _settings = const AppSettings();
+  AppSettings _settings = AppSettings();
   List<TrackedApp> _trackedApps = [];
   bool _isLocked = false;
   String? _shieldTarget;
@@ -24,10 +24,17 @@ class ShieldProvider extends ChangeNotifier {
   bool get loadingApps => _loadingApps;
   String get debugStatus => _debugStatus;
 
+  // All apps sorted by usage descending
   List<TrackedApp> get sortedApps =>
       [..._trackedApps]..sort((a, b) => b.usedMinutesToday.compareTo(a.usedMinutesToday));
 
-  TrackedApp? get topAppSorted => sortedApps.isNotEmpty ? sortedApps.first : null;
+  // Only non-excluded apps for tracking
+  List<TrackedApp> get trackedSortedApps => sortedApps
+      .where((a) => !_settings.isExcluded(a.packageId))
+      .toList();
+
+  TrackedApp? get topAppSorted =>
+      trackedSortedApps.isNotEmpty ? trackedSortedApps.first : null;
 
   String? get _uid => FirebaseAuth.instance.currentUser?.uid;
   DocumentReference? get _doc => _uid == null
@@ -36,9 +43,6 @@ class ShieldProvider extends ChangeNotifier {
 
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
-
-    // Clear old cached data so fresh install always reads real apps
-    await prefs.remove('tracked_apps');
 
     final settingsRaw = prefs.getString('app_settings');
     if (settingsRaw != null) {
@@ -57,38 +61,35 @@ class ShieldProvider extends ChangeNotifier {
       }
     } catch (_) {}
 
-    await _fetchInstalledApps(prefs);
+    await _fetchInstalledApps();
     await _fetchRealUsage();
 
     _loadingApps = false;
     notifyListeners();
   }
 
-  Future<void> _fetchInstalledApps(SharedPreferences prefs) async {
+  Future<void> _fetchInstalledApps() async {
     try {
-      _debugStatus = 'calling getInstalledApps...';
+      _debugStatus = 'fetching installed apps...';
       final result = await _usageChannel.invokeMethod<List>('getInstalledApps');
-      
+
       if (result != null && result.isNotEmpty) {
         _debugStatus = 'got ${result.length} apps from device';
-        
         _trackedApps = result.map((e) {
           final app = Map<String, String>.from(e as Map);
           return TrackedApp.fromInstalledApp(app);
         }).toList();
-
         notifyListeners();
         return;
       } else {
-        _debugStatus = 'result was null or empty, using defaults';
+        _debugStatus = 'result empty, using defaults';
       }
     } on PlatformException catch (e) {
-      _debugStatus = 'PlatformException: ${e.code} - ${e.message}';
+      _debugStatus = 'PlatformException: ${e.code}';
     } catch (e) {
       _debugStatus = 'Error: $e';
     }
 
-    // Fallback to defaults
     _trackedApps = TrackedApp.defaults;
     _debugStatus = 'using hardcoded defaults';
     notifyListeners();
@@ -114,10 +115,6 @@ class ShieldProvider extends ChangeNotifier {
   Future<void> _persist() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('app_settings', jsonEncode(_settings.toMap()));
-    await prefs.setString(
-      'tracked_apps',
-      jsonEncode(_trackedApps.map((a) => a.toMap()).toList()),
-    );
     try {
       await _doc?.set({
         'settings': _settings.toMap(),
@@ -128,6 +125,12 @@ class ShieldProvider extends ChangeNotifier {
 
   Future<void> updateSettings(AppSettings updated) async {
     _settings = updated;
+    notifyListeners();
+    await _persist();
+  }
+
+  Future<void> toggleExclusion(String packageId) async {
+    _settings = _settings.withToggleExclusion(packageId);
     notifyListeners();
     await _persist();
   }
@@ -164,9 +167,7 @@ class ShieldProvider extends ChangeNotifier {
   Future<void> refresh() async {
     _loadingApps = true;
     notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('tracked_apps');
-    await _fetchInstalledApps(prefs);
+    await _fetchInstalledApps();
     await _fetchRealUsage();
     _loadingApps = false;
     notifyListeners();

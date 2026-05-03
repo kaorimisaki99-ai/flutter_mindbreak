@@ -3,6 +3,7 @@ package com.mindbreak.app
 import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
@@ -51,8 +52,8 @@ class MainActivity : FlutterActivity() {
                     }
 
                     "getInstalledApps" -> {
-                        // No permission needed — PackageManager is always available
-                        val apps = getInstalledUserApps()
+                        // Returns ALL non-system apps — no special permission needed
+                        val apps = getAllNonSystemApps()
                         result.success(apps)
                     }
 
@@ -80,34 +81,37 @@ class MainActivity : FlutterActivity() {
         return mode == AppOpsManager.MODE_ALLOWED
     }
 
-    private fun getInstalledUserApps(): List<Map<String, String>> {
+    private fun getAllNonSystemApps(): List<Map<String, String>> {
         val pm = packageManager
-        val excludedPackages = setOf(
-            packageName,
-            "com.android.launcher",
-            "com.android.launcher3",
-            "com.google.android.apps.nexuslauncher",
-            "com.android.systemui",
-            "com.sec.android.app.launcher",
-            "com.miui.home",
-            "com.huawei.android.launcher",
-            "com.oppo.launcher",
-        )
 
-        val intent = Intent(Intent.ACTION_MAIN).apply {
-            addCategory(Intent.CATEGORY_LAUNCHER)
+        // Get all installed packages
+        val packages = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            pm.getInstalledApplications(PackageManager.ApplicationInfoFlags.of(PackageManager.GET_META_DATA.toLong()))
+        } else {
+            @Suppress("DEPRECATION")
+            pm.getInstalledApplications(PackageManager.GET_META_DATA)
         }
 
-        return pm.queryIntentActivities(intent, 0)
-            .filter { it.activityInfo.packageName !in excludedPackages }
-            .map { resolveInfo ->
-                val pkg = resolveInfo.activityInfo.packageName
-                val appName = resolveInfo.loadLabel(pm).toString()
-                mapOf(
-                    "packageId" to pkg,
-                    "name" to appName,
-                )
+        return packages
+            .filter { appInfo ->
+                // Keep only user-installed apps (exclude pure system apps)
+                val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                val isUpdatedSystem = (appInfo.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+                // Include if: not system app OR is an updated system app (like Chrome, Maps)
+                (!isSystem || isUpdatedSystem) && appInfo.packageName != packageName
             }
+            .mapNotNull { appInfo ->
+                try {
+                    val appName = pm.getApplicationLabel(appInfo).toString()
+                    mapOf(
+                        "packageId" to appInfo.packageName,
+                        "name" to appName,
+                    )
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            .filter { it["name"]!!.isNotBlank() }
             .sortedBy { it["name"] }
     }
 }
