@@ -1,24 +1,14 @@
-def localProperties = new Properties()
-def localPropertiesFile = rootProject.file("local.properties")
-
-if (localPropertiesFile.exists()) {
-    localPropertiesFile.withReader("UTF-8") { reader ->
-        localProperties.load(reader)
-    }
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+    id "com.google.gms.google-services"
 }
-
-def flutterRoot = localProperties.getProperty('flutter.sdk')
-
-apply plugin: 'com.android.application'
-apply plugin: 'kotlin-android'
-apply plugin: 'com.google.gms.google-services'
-apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
 
 android {
     namespace "com.mindbreak.app"
     compileSdkVersion 34
-    ndkVersion "25.1.8937393" 
-    
+    ndkVersion "25.1.8937393"
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_11
@@ -38,15 +28,14 @@ android {
         minSdkVersion 21
         targetSdkVersion 34
         multiDexEnabled true
-        
-        versionCode 1
-        versionName "1.0.0"
+        versionCode flutter.versionCode
+        versionName flutter.versionName
     }
 
     buildTypes {
         release {
             signingConfig signingConfigs.debug
-            minifyEnabled false   // safer for now (can enable later)
+            minifyEnabled false
             shrinkResources false
         }
     }
@@ -57,10 +46,9 @@ flutter {
 }
 
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.0"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.10"
     implementation platform('com.google.firebase:firebase-bom:32.7.0')
     implementation 'com.google.firebase:firebase-analytics'
     implementation 'androidx.multidex:multidex:2.0.1'
-    implementation 'com.google.android.material:material:1.9.0' 
-    
+    implementation 'com.google.android.material:material:1.9.0'
 }
