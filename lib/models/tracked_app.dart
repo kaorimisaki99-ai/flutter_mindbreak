@@ -2,7 +2,7 @@ class TrackedApp {
   final String id;
   final String name;
   final String packageId;
-  final String iconAsset; // material icon name stub
+  final String iconAsset;
   int usedMinutesToday;
 
   TrackedApp({
@@ -37,10 +37,20 @@ class TrackedApp {
         usedMinutesToday: (m['usedMinutesToday'] as int?) ?? 0,
       );
 
+  /// Creates a TrackedApp from a device installed app map
+  factory TrackedApp.fromInstalledApp(Map<String, String> app) => TrackedApp(
+        id: app['packageId']!,
+        name: app['name']!,
+        packageId: app['packageId']!,
+        iconAsset: 'smartphone',
+        usedMinutesToday: 0,
+      );
+
+  // Fallback defaults if installed apps can't be fetched
   static List<TrackedApp> get defaults => [
-        TrackedApp(id: '1', name: 'Instagram', packageId: 'com.instagram.android', iconAsset: 'photo_camera', usedMinutesToday: 22),
-        TrackedApp(id: '2', name: 'TikTok', packageId: 'com.zhiliaoapp.musically', iconAsset: 'music_note', usedMinutesToday: 8),
-        TrackedApp(id: '3', name: 'Twitter / X', packageId: 'com.twitter.android', iconAsset: 'tag', usedMinutesToday: 5),
-        TrackedApp(id: '4', name: 'YouTube', packageId: 'com.google.android.youtube', iconAsset: 'play_circle', usedMinutesToday: 14),
+        TrackedApp(id: '1', name: 'Instagram', packageId: 'com.instagram.android', iconAsset: 'photo_camera'),
+        TrackedApp(id: '2', name: 'TikTok', packageId: 'com.zhiliaoapp.musically', iconAsset: 'music_note'),
+        TrackedApp(id: '3', name: 'Twitter / X', packageId: 'com.twitter.android', iconAsset: 'tag'),
+        TrackedApp(id: '4', name: 'YouTube', packageId: 'com.google.android.youtube', iconAsset: 'play_circle'),
       ];
 }

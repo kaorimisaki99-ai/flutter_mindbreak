@@ -7,21 +7,21 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/tracked_app.dart';
 import '../models/app_settings.dart';
 
-/// MethodChannel for native UsageStats access (Android only)
 const _usageChannel = MethodChannel('com.mindbreak.app/usage_stats');
 
 class ShieldProvider extends ChangeNotifier {
   AppSettings _settings = const AppSettings();
-  List<TrackedApp> _trackedApps = TrackedApp.defaults;
+  List<TrackedApp> _trackedApps = [];
   bool _isLocked = false;
   String? _shieldTarget;
+  bool _loadingApps = true;
 
   AppSettings get settings => _settings;
   List<TrackedApp> get trackedApps => _trackedApps;
   bool get isLocked => _isLocked;
   String? get shieldTarget => _shieldTarget;
+  bool get loadingApps => _loadingApps;
 
-  // Sorted descending by usage
   List<TrackedApp> get sortedApps =>
       [..._trackedApps]..sort((a, b) => b.usedMinutesToday.compareTo(a.usedMinutesToday));
 
@@ -35,6 +35,7 @@ class ShieldProvider extends ChangeNotifier {
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
 
+    // Load settings
     final settingsRaw = prefs.getString('app_settings');
     if (settingsRaw != null) {
       try {
@@ -42,15 +43,7 @@ class ShieldProvider extends ChangeNotifier {
       } catch (_) {}
     }
 
-    final appsRaw = prefs.getString('tracked_apps');
-    if (appsRaw != null) {
-      try {
-        final list = jsonDecode(appsRaw) as List;
-        _trackedApps = list.map((e) => TrackedApp.fromMap(e as Map<String, dynamic>)).toList();
-      } catch (_) {}
-    }
-
-    // Try to load from Firestore
+    // Try Firestore settings
     try {
       final snap = await _doc?.get();
       if (snap != null && snap.exists) {
@@ -61,10 +54,56 @@ class ShieldProvider extends ChangeNotifier {
       }
     } catch (_) {}
 
-    // Try real UsageStats from native (Android only)
+    // Load installed apps from device
+    await _fetchInstalledApps(prefs);
+
+    // Fetch real usage stats
     await _fetchRealUsage();
 
+    _loadingApps = false;
     notifyListeners();
+  }
+
+  /// Fetches all installed apps from the device via MethodChannel
+  Future<void> _fetchInstalledApps(SharedPreferences prefs) async {
+    try {
+      final result = await _usageChannel.invokeMethod<List>('getInstalledApps');
+      if (result != null && result.isNotEmpty) {
+        // Load previously saved usage data
+        final savedRaw = prefs.getString('tracked_apps');
+        Map<String, int> savedUsage = {};
+        if (savedRaw != null) {
+          try {
+            final list = jsonDecode(savedRaw) as List;
+            for (final e in list) {
+              final map = e as Map<String, dynamic>;
+              savedUsage[map['packageId'] as String] = (map['usedMinutesToday'] as int?) ?? 0;
+            }
+          } catch (_) {}
+        }
+
+        _trackedApps = result.map((e) {
+          final app = Map<String, String>.from(e as Map);
+          final tracked = TrackedApp.fromInstalledApp(app);
+          return tracked.copyWith(usedMinutesToday: savedUsage[tracked.packageId] ?? 0);
+        }).toList();
+
+        return;
+      }
+    } on PlatformException {
+      // Permission not granted yet — use defaults
+    } catch (_) {}
+
+    // Fallback to saved apps or defaults
+    final appsRaw = prefs.getString('tracked_apps');
+    if (appsRaw != null) {
+      try {
+        final list = jsonDecode(appsRaw) as List;
+        _trackedApps = list.map((e) => TrackedApp.fromMap(e as Map<String, dynamic>)).toList();
+        return;
+      } catch (_) {}
+    }
+    _trackedApps = TrackedApp.defaults;
   }
 
   /// Calls native Kotlin to fetch real app usage via UsageStatsManager
@@ -81,7 +120,7 @@ class ShieldProvider extends ChangeNotifier {
         }).toList();
       }
     } on PlatformException {
-      // UsageStats permission not granted — keep simulated values
+      // UsageStats permission not granted
     } catch (_) {}
   }
 
@@ -133,5 +172,16 @@ class ShieldProvider extends ChangeNotifier {
     _shieldTarget = null;
     notifyListeners();
     _persist();
+  }
+
+  /// Refresh apps and usage — call after permission is granted
+  Future<void> refresh() async {
+    _loadingApps = true;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await _fetchInstalledApps(prefs);
+    await _fetchRealUsage();
+    _loadingApps = false;
+    notifyListeners();
   }
 }

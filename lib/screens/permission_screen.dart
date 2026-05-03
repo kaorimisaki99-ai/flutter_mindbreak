@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
+import '../providers/shield_provider.dart';
 import 'dart:async';
 import 'package:flutter/services.dart';
 
@@ -12,7 +14,7 @@ class PermissionScreen extends StatefulWidget {
   State<PermissionScreen> createState() => _PermissionScreenState();
 }
 
-class _PermissionScreenState extends State<PermissionScreen> {
+class _PermissionScreenState extends State<PermissionScreen> with WidgetsBindingObserver {
   static const _channel = MethodChannel('com.mindbreak.app/usage_stats');
 
   bool _hasUsage = false;
@@ -22,7 +24,22 @@ class _PermissionScreenState extends State<PermissionScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _checkPermissions();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // Re-check when user comes back from Settings
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkPermissions();
+    }
   }
 
   Future<void> _checkPermissions() async {
@@ -36,7 +53,11 @@ class _PermissionScreenState extends State<PermissionScreen> {
         _loading = false;
       });
       if (usage && accessibility) {
-        widget.onAllGranted();
+        // Refresh apps now that permission is granted
+        if (mounted) {
+          await context.read<ShieldProvider>().refresh();
+          widget.onAllGranted();
+        }
       }
     } catch (e) {
       setState(() => _loading = false);
@@ -45,14 +66,10 @@ class _PermissionScreenState extends State<PermissionScreen> {
 
   Future<void> _requestUsage() async {
     await _channel.invokeMethod('requestUsagePermission');
-    await Future.delayed(const Duration(seconds: 1));
-    await _checkPermissions();
   }
 
   Future<void> _requestAccessibility() async {
     await _channel.invokeMethod('requestAccessibilityPermission');
-    await Future.delayed(const Duration(seconds: 1));
-    await _checkPermissions();
   }
 
   @override
@@ -74,7 +91,6 @@ class _PermissionScreenState extends State<PermissionScreen> {
             children: [
               const SizedBox(height: 32),
 
-              // Icon
               Container(
                 width: 64,
                 height: 64,
@@ -86,7 +102,6 @@ class _PermissionScreenState extends State<PermissionScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Title
               Text(
                 'Setup MindBreak',
                 style: GoogleFonts.inter(
@@ -102,7 +117,6 @@ class _PermissionScreenState extends State<PermissionScreen> {
               ),
               const SizedBox(height: 40),
 
-              // Permission 1: Usage Access
               _PermissionTile(
                 icon: Icons.bar_chart_outlined,
                 title: 'Usage Access',
@@ -112,7 +126,6 @@ class _PermissionScreenState extends State<PermissionScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Permission 2: Accessibility
               _PermissionTile(
                 icon: Icons.accessibility_new_outlined,
                 title: 'Accessibility Service',
@@ -123,7 +136,6 @@ class _PermissionScreenState extends State<PermissionScreen> {
 
               const Spacer(),
 
-              // Refresh button
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
@@ -142,7 +154,6 @@ class _PermissionScreenState extends State<PermissionScreen> {
               ),
               const SizedBox(height: 12),
 
-              // Continue button (only enabled when all granted)
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -167,7 +178,6 @@ class _PermissionScreenState extends State<PermissionScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Privacy note
               Center(
                 child: Text(
                   'Your data stays on your device. Nothing is shared.',
@@ -216,9 +226,7 @@ class _PermissionTile extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: isGranted
-                  ? AppColors.success.withOpacity(0.15)
-                  : AppColors.cardElevated,
+              color: isGranted ? AppColors.success.withOpacity(0.15) : AppColors.cardElevated,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -232,19 +240,13 @@ class _PermissionTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: GoogleFonts.inter(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
+                Text(title,
+                    style: GoogleFonts.inter(
+                        fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
                 const SizedBox(height: 3),
-                Text(
-                  description,
-                  style: GoogleFonts.inter(fontSize: 12, color: AppColors.textMuted, height: 1.4),
-                ),
+                Text(description,
+                    style: GoogleFonts.inter(
+                        fontSize: 12, color: AppColors.textMuted, height: 1.4)),
               ],
             ),
           ),
@@ -256,14 +258,9 @@ class _PermissionTile extends StatelessWidget {
                 color: AppColors.success.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Text(
-                'Granted',
-                style: GoogleFonts.inter(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.success,
-                ),
-              ),
+              child: Text('Granted',
+                  style: GoogleFonts.inter(
+                      fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.success)),
             )
           else
             GestureDetector(
@@ -275,14 +272,9 @@ class _PermissionTile extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: AppColors.primary.withOpacity(0.3)),
                 ),
-                child: Text(
-                  'Enable',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
-                  ),
-                ),
+                child: Text('Enable',
+                    style: GoogleFonts.inter(
+                        fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
               ),
             ),
         ],
