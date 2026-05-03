@@ -133,7 +133,7 @@ _loading = false;
 
       for (final entry in result.entries) {
         final pkg = entry.key as String;
-        final mins = (entry.value as int?) ?? 0;
+        final mins = (entry.value as num?)?.toInt() ?? 0;
         if (mins <= 0) continue;
 
         if (byPkg.containsKey(pkg)) {
@@ -178,9 +178,10 @@ _loading = false;
   Future<void> _writeBlockerPrefs() async {
     try {
       final excluded = _settings.allExcludedPackages;
+      final limit = _settings.dailyLimitMinutes;
       final blocked = _trackedApps
+          .where((a) => !excluded.contains(a.packageId) && a.usedMinutesToday >= limit)
           .map((a) => a.packageId)
-          .where((pkg) => !excluded.contains(pkg))
           .toList();
       await _usageChannel.invokeMethod('setBlockedPackages', {'packages': blocked});
     } on PlatformException {

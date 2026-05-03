@@ -37,9 +37,9 @@ class StatsScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: rank.color.withOpacity(0.1),
+                color: rank.color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: rank.color.withOpacity(0.4)),
+                border: Border.all(color: rank.color.withValues(alpha: 0.4)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -75,9 +75,9 @@ class StatsScreen extends StatelessWidget {
                         width: 56,
                         height: 56,
                         decoration: BoxDecoration(
-                          color: rank.color.withOpacity(0.2),
+                          color: rank.color.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: rank.color.withOpacity(0.6)),
+                          border: Border.all(color: rank.color.withValues(alpha: 0.6)),
                         ),
                         child: const Icon(Icons.military_tech, color: Colors.white, size: 28),
                       ),
@@ -118,7 +118,7 @@ class StatsScreen extends StatelessWidget {
                       margin: const EdgeInsets.only(bottom: 4),
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                       decoration: BoxDecoration(
-                        color: isCurrent ? (r['color'] as Color).withOpacity(0.15) : Colors.transparent,
+                        color: isCurrent ? (r['color'] as Color).withValues(alpha: 0.15) : Colors.transparent,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
@@ -168,9 +168,9 @@ class StatsScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: streakColor.withOpacity(0.1),
+                color: streakColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: streakColor.withOpacity(0.4)),
+                border: Border.all(color: streakColor.withValues(alpha: 0.4)),
               ),
               child: Column(
                 children: [

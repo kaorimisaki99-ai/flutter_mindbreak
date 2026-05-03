@@ -82,7 +82,7 @@ class _ShieldScreenState extends State<ShieldScreen> with SingleTickerProviderSt
                   child: Container(
                     width: 110, height: 110,
                     decoration: BoxDecoration(
-                      color: AppColors.danger.withOpacity(0.12),
+                      color: AppColors.danger.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.lock, size: 52, color: AppColors.danger),

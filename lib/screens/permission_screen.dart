@@ -65,9 +65,9 @@ class _PermissionScreenState extends State<PermissionScreen> {
               Container(
                 width: 64, height: 64,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
                 ),
                 child: const Icon(Icons.shield_outlined, size: 32, color: AppColors.primary),
               ),
@@ -142,15 +142,15 @@ class _PermissionTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: granted ? AppColors.success.withOpacity(0.08) : AppColors.card,
+          color: granted ? AppColors.success.withValues(alpha: 0.08) : AppColors.card,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: granted ? AppColors.success.withOpacity(0.4) : AppColors.border),
+          border: Border.all(color: granted ? AppColors.success.withValues(alpha: 0.4) : AppColors.border),
         ),
         child: Row(
           children: [
             Container(
               width: 44, height: 44,
-              decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
               child: Icon(icon, size: 22, color: color),
             ),
             const SizedBox(width: 14),

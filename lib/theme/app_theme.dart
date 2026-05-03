@@ -42,13 +42,11 @@ ThemeData buildAppTheme() {
     brightness: Brightness.light,
     scaffoldBackgroundColor: AppColors.background,
     colorScheme: const ColorScheme.light(
-      background: AppColors.background,
       surface: AppColors.card,
       primary: AppColors.primary,
       secondary: AppColors.secondary,
       error: AppColors.danger,
       onPrimary: AppColors.primaryFg,
-      onBackground: AppColors.textPrimary,
       onSurface: AppColors.textPrimary,
     ),
     textTheme: GoogleFonts.interTextTheme(
@@ -67,7 +65,7 @@ ThemeData buildAppTheme() {
       type: BottomNavigationBarType.fixed,
       elevation: 0,
     ),
-    cardTheme: const CardTheme(
+    cardTheme: const CardThemeData(
       color: AppColors.card,
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
@@ -79,7 +77,7 @@ ThemeData buildAppTheme() {
       ),
       trackColor: WidgetStateProperty.resolveWith(
         (s) => s.contains(WidgetState.selected)
-            ? AppColors.primary.withOpacity(0.3)
+            ? AppColors.primary.withValues(alpha: 0.3)
             : AppColors.muted,
       ),
     ),
