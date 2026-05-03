@@ -17,7 +17,6 @@ apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
 android {
     namespace "com.mindbreak.app"
     compileSdkVersion 34
-    ndkVersion flutter.ndkVersion
     ndkVersion "25.1.8937393" 
     
 
