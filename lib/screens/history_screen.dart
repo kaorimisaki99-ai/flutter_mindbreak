@@ -14,7 +14,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
   String _selectedCategory = 'All';
   DateTimeRange? _dateRange;
 
-  // Updated categories to match what GameProvider saves
   final _categories = ['All', 'Locked', 'Usage'];
 
   String get _uid => FirebaseAuth.instance.currentUser!.uid;
@@ -51,7 +50,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
       initialDateRange: _dateRange,
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(
-          colorScheme: const ColorScheme.dark(primary: AppColors.primary),
+          colorScheme: const ColorScheme.light(
+            primary: AppColors.primary,
+            onPrimary: AppColors.primaryFg,
+            surface: AppColors.card,
+            onSurface: AppColors.textPrimary,
+          ),
         ),
         child: child!,
       ),
@@ -73,7 +77,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
         elevation: 0,
         title: const Text(
           'History',
-          style: TextStyle(color: AppColors.text, fontWeight: FontWeight.bold),
+          style: TextStyle(
+              color: AppColors.textPrimary, fontWeight: FontWeight.bold),
         ),
         actions: [
           if (_selectedCategory != 'All' || _dateRange != null)
@@ -89,8 +94,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
-                child:
-                    CircularProgressIndicator(color: AppColors.primary));
+                child: CircularProgressIndicator(color: AppColors.primary));
           }
 
           final allDocs = snapshot.data?.docs ?? [];
@@ -137,7 +141,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       selected: selected,
                       onSelected: (_) =>
                           setState(() => _selectedCategory = cat),
-                      selectedColor: AppColors.primary.withOpacity(0.2),
+                      selectedColor:
+                          AppColors.primary.withValues(alpha: 0.2),
                       checkmarkColor: AppColors.primary,
                       labelStyle: TextStyle(
                         color: selected
@@ -165,7 +170,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
                 color: _dateRange != null
-                    ? AppColors.primary.withOpacity(0.15)
+                    ? AppColors.primary.withValues(alpha: 0.15)
                     : AppColors.background,
                 border: Border.all(
                   color: _dateRange != null
@@ -176,11 +181,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.date_range,
-                      size: 14,
-                      color: _dateRange != null
-                          ? AppColors.primary
-                          : AppColors.textMuted),
+                  Icon(
+                    Icons.date_range,
+                    size: 14,
+                    color: _dateRange != null
+                        ? AppColors.primary
+                        : AppColors.textMuted,
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     _dateRange != null
@@ -204,7 +211,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Widget _buildAnalyticsSummary(List<Map<String, dynamic>> entries) {
     final totalMinutes = entries.fold<int>(
-        0, (sum, e) => sum + ((e['durationMinutes'] ?? 0) as int));
+        0, (total, e) => total + ((e['durationMinutes'] ?? 0) as int));
     final totalHours = totalMinutes ~/ 60;
     final remainingMins = totalMinutes % 60;
 
@@ -230,11 +237,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Summary',
-              style: TextStyle(
-                  color: AppColors.text,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16)),
+          const Text(
+            'Summary',
+            style: TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.bold,
+                fontSize: 16),
+          ),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -252,13 +261,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
           if (byCategory.isNotEmpty) ...[
             const SizedBox(height: 16),
-            const Text('Breakdown',
-                style:
-                    TextStyle(color: AppColors.textMuted, fontSize: 13)),
+            const Text(
+              'Breakdown',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+            ),
             const SizedBox(height: 8),
             ...byCategory.entries.map(
-                (entry) => _categoryBar(entry.key, entry.value, totalMinutes,
-                    count: countByCategory[entry.key] ?? 0)),
+              (entry) => _categoryBar(
+                entry.key,
+                entry.value,
+                totalMinutes,
+                count: countByCategory[entry.key] ?? 0,
+              ),
+            ),
           ],
         ],
       ),
@@ -276,15 +291,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
         ),
         child: Column(
           children: [
-            Text(value,
-                style: const TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18)),
+            Text(
+              value,
+              style: const TextStyle(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18),
+            ),
             const SizedBox(height: 2),
-            Text(label,
-                style: const TextStyle(
-                    color: AppColors.textMuted, fontSize: 11)),
+            Text(
+              label,
+              style: const TextStyle(
+                  color: AppColors.textMuted, fontSize: 11),
+            ),
           ],
         ),
       ),
@@ -295,11 +314,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
       {int count = 0}) {
     final percent = total == 0 ? 0.0 : minutes / total;
     final catColors = {
-      'Locked': Colors.redAccent,
-      'Usage': Colors.blueAccent,
-      'Focus': Colors.blue,
-      'Break': Colors.green,
-      'Relax': Colors.purple,
+      'Locked': AppColors.danger,
+      'Usage': AppColors.primary,
+      'Focus': AppColors.secondary,
+      'Break': AppColors.success,
     };
     final color = catColors[category] ?? AppColors.primary;
 
@@ -322,9 +340,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  Text(category,
-                      style: const TextStyle(
-                          color: AppColors.text, fontSize: 13)),
+                  Text(
+                    category,
+                    style: const TextStyle(
+                        color: AppColors.textPrimary, fontSize: 13),
+                  ),
                 ],
               ),
               Text(
@@ -352,29 +372,33 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-      child: Text(title,
-          style: const TextStyle(
-              color: AppColors.textMuted,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.5)),
+      child: Text(
+        title,
+        style: const TextStyle(
+            color: AppColors.textMuted,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5),
+      ),
     );
   }
 
   Widget _buildEmpty() {
-    return Center(
+    return const Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
+        children: [
           Icon(Icons.history, color: AppColors.textMuted, size: 48),
           SizedBox(height: 12),
-          Text('No sessions found.',
-              style:
-                  TextStyle(color: AppColors.textMuted, fontSize: 15)),
+          Text(
+            'No sessions found.',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 15),
+          ),
           SizedBox(height: 4),
-          Text('Try clearing filters or use the app more.',
-              style:
-                  TextStyle(color: AppColors.textMuted, fontSize: 12)),
+          Text(
+            'Try clearing filters or use the app more.',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+          ),
         ],
       ),
     );
@@ -382,11 +406,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   List<Widget> _buildList(List<Map<String, dynamic>> entries) {
     final catColors = {
-      'Locked': Colors.redAccent,
-      'Usage': Colors.blueAccent,
-      'Focus': Colors.blue,
-      'Break': Colors.green,
-      'Relax': Colors.purple,
+      'Locked': AppColors.danger,
+      'Usage': AppColors.primary,
+      'Focus': AppColors.secondary,
+      'Break': AppColors.success,
     };
 
     final catIcons = {
@@ -394,11 +417,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
       'Usage': Icons.phone_android,
       'Focus': Icons.center_focus_strong_outlined,
       'Break': Icons.coffee_outlined,
-      'Relax': Icons.self_improvement_outlined,
     };
 
-    return entries.asMap().entries.map((entry) {
-      final e = entry.value;
+    return entries.map((e) {
       final date = (e['date'] as Timestamp?)?.toDate();
       final category = e['category'] as String? ?? 'Unknown';
       final minutes = e['durationMinutes'] as int? ?? 0;
@@ -420,7 +441,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
+                color: color.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(icon, color: color, size: 20),
@@ -436,7 +457,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       Text(
                         category,
                         style: const TextStyle(
-                            color: AppColors.text,
+                            color: AppColors.textPrimary,
                             fontWeight: FontWeight.w600,
                             fontSize: 14),
                       ),
@@ -445,7 +466,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: color.withOpacity(0.1),
+                            color: color.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
