@@ -36,7 +36,8 @@ class GameProvider extends ChangeNotifier {
     if (weeklyRaw != null) {
       try {
         final list = jsonDecode(weeklyRaw) as List;
-        _weeklyUsage = list.map((e) => DayUsage.fromMap(e as Map<String, dynamic>)).toList();
+        _weeklyUsage =
+            list.map((e) => DayUsage.fromMap(e as Map<String, dynamic>)).toList();
       } catch (_) {}
     }
 
@@ -53,7 +54,8 @@ class GameProvider extends ChangeNotifier {
         }
         if (data != null && data['weekly'] != null) {
           final list = data['weekly'] as List;
-          _weeklyUsage = list.map((e) => DayUsage.fromMap(e as Map<String, dynamic>)).toList();
+          _weeklyUsage =
+              list.map((e) => DayUsage.fromMap(e as Map<String, dynamic>)).toList();
         }
       }
     } catch (_) {}
@@ -92,6 +94,27 @@ class GameProvider extends ChangeNotifier {
     );
   }
 
+  /// Saves a session entry to Firestore history subcollection
+  Future<void> _saveSessionToHistory({
+    required String category,
+    required int durationMinutes,
+    String note = '',
+  }) async {
+    if (_uid == null) return;
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(_uid)
+          .collection('history')
+          .add({
+        'date': FieldValue.serverTimestamp(),
+        'category': category,
+        'durationMinutes': durationMinutes,
+        'note': note,
+      });
+    } catch (_) {}
+  }
+
   void checkAndUpdateStreak() {
     final today = DateTime.now();
     final todayStr = '${today.year}-${today.month}-${today.day}';
@@ -107,7 +130,8 @@ class GameProvider extends ChangeNotifier {
 
     _state = _state.copyWith(
       streak: newStreak,
-      longestStreak: newStreak > _state.longestStreak ? newStreak : _state.longestStreak,
+      longestStreak:
+          newStreak > _state.longestStreak ? newStreak : _state.longestStreak,
       lastCleanDate: todayStr,
       lockedToday: false,
     );
@@ -127,12 +151,20 @@ class GameProvider extends ChangeNotifier {
     );
 
     _weeklyUsage = _weeklyUsage.map((d) {
-      if (d.date == todayStr) return DayUsage(date: d.date, minutes: d.minutes, locked: true);
+      if (d.date == todayStr)
+        return DayUsage(date: d.date, minutes: d.minutes, locked: true);
       return d;
     }).toList();
 
     notifyListeners();
     await _persist();
+
+    // Save locked session to history
+    await _saveSessionToHistory(
+      category: 'Locked',
+      durationMinutes: 0,
+      note: 'Phone locked for today',
+    );
   }
 
   void updateTodayUsage(int minutes) {
@@ -147,9 +179,21 @@ class GameProvider extends ChangeNotifier {
       return d;
     }).toList();
     if (!found && _weeklyUsage.length >= 7) {
-      _weeklyUsage = [..._weeklyUsage.sublist(1), DayUsage(date: todayStr, minutes: minutes)];
+      _weeklyUsage = [
+        ..._weeklyUsage.sublist(1),
+        DayUsage(date: todayStr, minutes: minutes)
+      ];
     }
     notifyListeners();
-    _persist(); // persist real usage so it survives restarts
+    _persist();
+
+    // Save usage session to history (only when meaningful)
+    if (minutes > 0) {
+      _saveSessionToHistory(
+        category: 'Usage',
+        durationMinutes: minutes,
+        note: 'Daily usage update',
+      );
+    }
   }
 }

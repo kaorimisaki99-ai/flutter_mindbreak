@@ -8,6 +8,7 @@ import 'providers/game_provider.dart';
 import 'providers/shield_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/stats_screen.dart';
+import 'screens/history_screen.dart'; // ← NEW
 import 'screens/settings_screen.dart';
 import 'screens/shield_screen.dart';
 import 'screens/permission_screen.dart';
@@ -70,7 +71,14 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int _currentIndex = 0;
-  final _screens = const [HomeScreen(), StatsScreen(), SettingsScreen()];
+
+  // ← Added HistoryScreen() between Stats and Settings
+  final _screens = const [
+    HomeScreen(),
+    StatsScreen(),
+    HistoryScreen(),
+    SettingsScreen(),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -91,10 +99,28 @@ class _AppShellState extends State<AppShell> {
           elevation: 0,
           selectedItemColor: AppColors.primary,
           unselectedItemColor: AppColors.textMuted,
+          type: BottomNavigationBarType.fixed, // ← needed for 4+ items
           items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
-            BottomNavigationBarItem(icon: Icon(Icons.bar_chart_outlined), activeIcon: Icon(Icons.bar_chart), label: 'Stats'),
-            BottomNavigationBarItem(icon: Icon(Icons.settings_outlined), activeIcon: Icon(Icons.settings), label: 'Settings'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home_outlined),
+              activeIcon: Icon(Icons.home),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.bar_chart_outlined),
+              activeIcon: Icon(Icons.bar_chart),
+              label: 'Stats',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.history_outlined),   // ← NEW
+              activeIcon: Icon(Icons.history),       // ← NEW
+              label: 'History',                      // ← NEW
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.settings_outlined),
+              activeIcon: Icon(Icons.settings),
+              label: 'Settings',
+            ),
           ],
         ),
       ),

@@ -9,6 +9,11 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  fl_chart: ^0.68.0        # for charts
+  intl: ^0.19.0             # for date formatting
+  provider: ^6.1.2    
 
   # Firebase
   firebase_core: ^2.24.2
