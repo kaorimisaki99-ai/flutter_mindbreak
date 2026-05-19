@@ -20,9 +20,6 @@ dependencies:
   firebase_auth: ^4.16.0
   cloud_firestore: ^4.15.4
 
-  # State
-  provider: ^6.1.1
-
   # Storage
   shared_preferences: ^2.2.2
 
